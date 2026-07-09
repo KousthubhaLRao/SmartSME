@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
+import { db, ensureReady } from "@/db";
 import * as s from "@/db/schema";
 import { getSessionUserId } from "./session";
 
@@ -12,6 +12,10 @@ export interface AuthContext {
 
 // Deduped per request via React cache.
 export const getCurrentUser = cache(async (): Promise<AuthContext | null> => {
+  // Guarantees the DB connection is initialized before any query — runs on
+  // every page and server action (both call requireUser), so it doesn't rely
+  // on instrumentation timing (important on serverless / Vercel).
+  await ensureReady();
   const userId = await getSessionUserId();
   if (!userId) return null;
   const [user] = await db.select().from(s.users).where(eq(s.users.id, userId));

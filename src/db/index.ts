@@ -69,10 +69,21 @@ export async function ensureReady(): Promise<void> {
   if (!g.__smartsmeReady) {
     g.__smartsmeReady = (async () => {
       if (process.env.NEXT_PHASE === "phase-production-build") return;
+      // Only the connection is critical. Migrations + seed are best-effort so a
+      // missing ./drizzle folder (e.g. not bundled in a serverless deploy) or a
+      // seed hiccup can never crash boot and 500 every route.
       g.__smartsmeDb = await initDb();
-      await runMigrations();
-      const { seedIfEmpty } = await import("./seed");
-      await seedIfEmpty();
+      try {
+        await runMigrations();
+      } catch (err) {
+        console.warn("[db] migrations skipped:", err instanceof Error ? err.message : err);
+      }
+      try {
+        const { seedIfEmpty } = await import("./seed");
+        await seedIfEmpty();
+      } catch (err) {
+        console.warn("[db] seed skipped:", err instanceof Error ? err.message : err);
+      }
     })().catch((err) => {
       g.__smartsmeReady = undefined;
       throw err;

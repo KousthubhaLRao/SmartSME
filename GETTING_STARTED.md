@@ -118,3 +118,30 @@ as the README describes:
   unset (Docker wasn't required to run this). Set `DATABASE_URL` for Postgres.
 - **Worker** runs in-process (Next instrumentation) by default; standalone
   `npm run worker` is for the real-Postgres two-process setup.
+
+## Deploying to Vercel
+
+Vercel is **serverless**, so two things matter:
+
+1. **Set environment variables** in Vercel → Project → Settings → Environment
+   Variables (for Production + Preview), then redeploy:
+
+   | Name | Value |
+   |---|---|
+   | `DATABASE_URL` | your Neon **pooled** connection string (the `-pooler` host) — required; without it the app tries embedded PGlite, which can't run on Vercel's read-only filesystem |
+   | `AUTH_SECRET` | a long random string (e.g. `openssl rand -hex 32`) |
+   | `ANTHROPIC_API_KEY` | optional — enables Claude NLP + OCR |
+
+2. **Apply migrations to your database once** (from your machine, or a build
+   step): `npm run db:migrate`. The app also attempts migrations on boot
+   (best-effort), but running it explicitly is cleanest.
+
+**How events work on serverless:** the background polling worker can't run in a
+serverless function, so business writes **drain the event queue synchronously**
+within the request — creating a sale updates inventory/balances and raises alerts
+before the response returns. An optional `/api/worker` endpoint drains any
+stragglers (e.g. retrying dead-lettered events); point a Vercel Cron at it, and
+set `CRON_SECRET` to require `Authorization: Bearer <secret>`.
+
+> If you saw a 500 on Vercel, it was almost always a missing `DATABASE_URL` /
+> `AUTH_SECRET`. Set them and redeploy.

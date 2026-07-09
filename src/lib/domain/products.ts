@@ -2,6 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import * as s from "@/db/schema";
 import { publish } from "@/lib/events/publish";
+import { drainQueue } from "@/worker/loop";
 
 export interface ProductInput {
   name: string;
@@ -80,6 +81,7 @@ export async function adjustStock(
     });
     await publish(tx, businessId, "STOCK_UPDATED", { productId, cause: "adjustment" });
   });
+  await drainQueue();
 }
 
 export async function deleteProduct(businessId: string, productId: string) {

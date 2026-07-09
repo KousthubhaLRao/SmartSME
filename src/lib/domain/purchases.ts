@@ -3,6 +3,7 @@ import { db } from "@/db";
 import * as s from "@/db/schema";
 import { publish } from "@/lib/events/publish";
 import { paymentStatusFor } from "@/lib/workflow/engine";
+import { drainQueue } from "@/worker/loop";
 import { round2 } from "@/lib/utils";
 
 export interface PurchaseLineInput {
@@ -37,8 +38,8 @@ export async function createPurchase(businessId: string, input: CreatePurchaseIn
     .where(eq(s.purchases.businessId, businessId));
   const referenceNumber = `PO-${String(Number(value) + 1).padStart(4, "0")}`;
 
-  return db.transaction(async (tx) => {
-    const [pur] = await tx
+  const pur = await db.transaction(async (tx) => {
+    const [row] = await tx
       .insert(s.purchases)
       .values({
         businessId,
@@ -56,7 +57,7 @@ export async function createPurchase(businessId: string, input: CreatePurchaseIn
 
     await tx.insert(s.purchaseItems).values(
       items.map((i) => ({
-        purchaseId: pur.id,
+        purchaseId: row.id,
         productId: i.productId || null,
         description: i.description.trim(),
         quantity: i.quantity,
@@ -65,9 +66,12 @@ export async function createPurchase(businessId: string, input: CreatePurchaseIn
       })),
     );
 
-    await publish(tx, businessId, "PURCHASE_CREATED", { purchaseId: pur.id });
-    return pur;
+    await publish(tx, businessId, "PURCHASE_CREATED", { purchaseId: row.id });
+    return row;
   });
+
+  await drainQueue();
+  return pur;
 }
 
 // Cancel a purchase: remove the received stock, reverse the payable.

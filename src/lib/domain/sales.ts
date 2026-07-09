@@ -3,6 +3,7 @@ import { db } from "@/db";
 import * as s from "@/db/schema";
 import { publish } from "@/lib/events/publish";
 import { paymentStatusFor } from "@/lib/workflow/engine";
+import { drainQueue } from "@/worker/loop";
 import { round2 } from "@/lib/utils";
 
 export interface SaleLineInput {
@@ -42,8 +43,8 @@ export async function createSale(businessId: string, input: CreateSaleInput) {
     .where(eq(s.sales.businessId, businessId));
   const invoiceNumber = `${biz.invoicePrefix}-${String(Number(value) + 1).padStart(4, "0")}`;
 
-  return db.transaction(async (tx) => {
-    const [sale] = await tx
+  const sale = await db.transaction(async (tx) => {
+    const [row] = await tx
       .insert(s.sales)
       .values({
         businessId,
@@ -61,7 +62,7 @@ export async function createSale(businessId: string, input: CreateSaleInput) {
 
     await tx.insert(s.saleItems).values(
       items.map((i) => ({
-        saleId: sale.id,
+        saleId: row.id,
         productId: i.productId || null,
         description: i.description.trim(),
         quantity: i.quantity,
@@ -70,9 +71,14 @@ export async function createSale(businessId: string, input: CreateSaleInput) {
       })),
     );
 
-    await publish(tx, businessId, "SALE_CREATED", { saleId: sale.id });
-    return sale;
+    await publish(tx, businessId, "SALE_CREATED", { saleId: row.id });
+    return row;
   });
+
+  // Process the event chain now so inventory/balances/alerts apply within this
+  // request (works on serverless; on long-running hosts the interval also runs).
+  await drainQueue();
+  return sale;
 }
 
 // Cancel a sale: restore stock, reverse the receivable, mark it cancelled.
