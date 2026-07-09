@@ -1,5 +1,9 @@
 import { defineConfig } from "drizzle-kit";
-import "dotenv/config";
+import { config } from "dotenv";
+
+// Load .env.local first (where secrets live), then .env as fallback.
+config({ path: ".env.local" });
+config();
 
 // When DATABASE_URL is set we target a real PostgreSQL server. Otherwise the
 // app falls back to embedded PGlite (see src/db/index.ts) and migrations are

@@ -21,7 +21,9 @@ async function initDb(): Promise<Database> {
   if (url) {
     const { default: postgres } = await import(/* webpackIgnore: true */ "postgres");
     const { drizzle } = await import(/* webpackIgnore: true */ "drizzle-orm/postgres-js");
-    const client = postgres(url, { max: 10 });
+    // prepare:false is required for pooled endpoints (e.g. Neon's PgBouncer
+    // transaction pooler), which don't support session-level prepared statements.
+    const client = postgres(url, { max: 10, prepare: false });
     return drizzle(client, { schema }) as unknown as Database;
   }
   const { PGlite } = await import(/* webpackIgnore: true */ "@electric-sql/pglite");
