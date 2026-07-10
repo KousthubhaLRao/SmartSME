@@ -1,6 +1,6 @@
 import { requireUser } from "@/lib/auth/current-user";
 import { usingPglite } from "@/db";
-import { hasAI, MODEL } from "@/lib/ai/client";
+import { aiStatus } from "@/lib/ai/client";
 import { PageHeader } from "@/components/ui/misc";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { SettingsForm } from "./settings-form";
 
 export default async function SettingsPage() {
   const { user, business } = await requireUser();
+  const ai = aiStatus();
 
   return (
     <div className="space-y-6">
@@ -47,8 +48,8 @@ export default async function SettingsPage() {
               <span className="flex items-center gap-2 text-muted-foreground">
                 <Icon name="input" size={16} /> AI input engine
               </span>
-              <Badge tone={hasAI() ? "success" : "warning"}>
-                {hasAI() ? `Claude · ${MODEL}` : "Heuristic (no API key)"}
+              <Badge tone={ai ? "success" : "warning"}>
+                {ai ? `${ai.label} · ${ai.model}` : "Heuristic (no API key)"}
               </Badge>
             </div>
             <div className="flex items-center justify-between">
@@ -57,10 +58,11 @@ export default async function SettingsPage() {
               </span>
               <Badge tone="success">In-process · 1s poll</Badge>
             </div>
-            {!hasAI() && (
+            {!ai && (
               <p className="rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
-                Add <code>ANTHROPIC_API_KEY</code> to <code>.env.local</code> and restart to enable
-                Claude-powered natural-language parsing and image OCR.
+                Add an API key to <code>.env</code> and restart to enable smarter parsing and image
+                OCR. Any one works: <code>ANTHROPIC_API_KEY</code>, <code>OPENAI_API_KEY</code>, or{" "}
+                <code>GOOGLE_API_KEY</code>.
               </p>
             )}
           </CardContent>

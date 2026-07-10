@@ -10,6 +10,7 @@ import { parseInvoiceImage } from "@/lib/ai/ocr";
 import { createSale, type SaleLineInput } from "@/lib/domain/sales";
 import { createPurchase, type PurchaseLineInput } from "@/lib/domain/purchases";
 import { createExpense } from "@/lib/domain/expenses";
+import { aiStatus } from "@/lib/ai/client";
 import { round2 } from "@/lib/utils";
 
 export interface DraftItem {
@@ -21,7 +22,7 @@ export interface DraftItem {
 
 export interface Draft {
   suggestedType: "sale" | "purchase" | "expense";
-  engine: "claude" | "heuristic";
+  engine: string;
   partyId: string | null;
   partyName: string | null;
   items: DraftItem[];
@@ -163,7 +164,7 @@ export async function parseImageAction(dataUrl: string): Promise<ParseResult> {
     return {
       draft: {
         suggestedType,
-        engine: "claude",
+        engine: aiStatus()?.label ?? "AI",
         partyId: matchedParty?.id ?? null,
         partyName: invoice.party ?? null,
         items: items.length ? items : [{ productId: null, description: "Item", quantity: 1, unitPrice: 0 }],

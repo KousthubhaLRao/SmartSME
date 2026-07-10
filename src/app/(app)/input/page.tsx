@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as sc from "@/db/schema";
 import { requireUser } from "@/lib/auth/current-user";
-import { hasAI } from "@/lib/ai/client";
+import { hasAI, aiStatus } from "@/lib/ai/client";
 import { PageHeader } from "@/components/ui/misc";
 import { Card } from "@/components/ui/card";
 import { Icon } from "@/components/icons";
@@ -63,6 +63,7 @@ export default async function InputPage() {
         currency={business.currency}
         taxRate={business.taxRate}
         hasAI={hasAI()}
+        aiLabel={aiStatus()?.label ?? null}
       />
     </div>
   );

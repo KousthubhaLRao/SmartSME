@@ -30,12 +30,14 @@ export function InputConsole({
   currency,
   taxRate,
   hasAI,
+  aiLabel,
 }: {
   parties: Party[];
   products: EditorProduct[];
   currency: string;
   taxRate: number;
   hasAI: boolean;
+  aiLabel?: string | null;
 }) {
   const [mode, setMode] = useState<"text" | "image">("text");
   const [text, setText] = useState("");
@@ -157,7 +159,7 @@ export function InputConsole({
           </div>
           <div className="mt-4 flex items-center justify-between">
             <p className="text-xs text-muted-foreground">
-              {hasAI ? "Parsed by Claude." : "Parsed by the built-in engine. Add an API key for smarter parsing."}
+              {hasAI ? `Parsed by ${aiLabel ?? "your AI provider"}.` : "Parsed by the built-in engine. Add an API key for smarter parsing."}
             </p>
             <Button onClick={parseText} disabled={pending || !text.trim()}>
               {pending ? "Parsing…" : "Parse"} <Icon name="chevronRight" size={16} />
@@ -169,7 +171,7 @@ export function InputConsole({
           {!hasAI && (
             <div className="mb-4 flex items-start gap-2 rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning">
               <Icon name="alert" size={16} className="mt-0.5 shrink-0" />
-              <span>Image OCR needs an Anthropic API key. Add <code>ANTHROPIC_API_KEY</code> to <code>.env.local</code>, then restart.</span>
+              <span>Image OCR needs an AI provider with vision. Add an API key (<code>ANTHROPIC_API_KEY</code>, <code>OPENAI_API_KEY</code>, or <code>GOOGLE_API_KEY</code>) to <code>.env</code>, then restart.</span>
             </div>
           )}
           <label
@@ -262,8 +264,8 @@ function DraftConfirm({
             <Icon name="chevronRight" size={16} className="rotate-180" /> Edit input
           </button>
         </div>
-        <Badge tone={draft.engine === "claude" ? "primary" : "default"}>
-          {draft.engine === "claude" ? "Claude" : "Heuristic"} · {source === "ocr" ? "OCR" : "Text"}
+        <Badge tone={draft.engine !== "Heuristic" ? "primary" : "default"}>
+          {draft.engine} · {source === "ocr" ? "OCR" : "Text"}
         </Badge>
       </div>
 

@@ -1,4 +1,4 @@
-import { extractJson, getAnthropic, MODEL } from "./client";
+import { extractJson, getProvider } from "./client";
 
 export interface ParsedCommand {
   eventType: "SALE_CREATED" | "PURCHASE_CREATED" | "ORDER_CREATED" | "EXPENSE_ADDED";
@@ -7,58 +7,39 @@ export interface ParsedCommand {
   quantity: number | null;
   amount: number | null;
   category: string | null;
-  /** "claude" when the model parsed it, "heuristic" for the built-in fallback. */
-  engine: "claude" | "heuristic";
+  /** The provider label that parsed it (e.g. "Anthropic Claude"), or "Heuristic". */
+  engine: string;
 }
 
-const SCHEMA = {
-  type: "object",
-  properties: {
-    eventType: {
-      type: "string",
-      enum: ["SALE_CREATED", "PURCHASE_CREATED", "ORDER_CREATED", "EXPENSE_ADDED"],
-    },
-    party: { type: ["string", "null"] },
-    product: { type: ["string", "null"] },
-    quantity: { type: ["number", "null"] },
-    amount: { type: ["number", "null"] },
-    category: { type: ["string", "null"] },
-  },
-  required: ["eventType", "party", "product", "quantity", "amount", "category"],
-  additionalProperties: false,
-} as const;
+const SYSTEM =
+  "You extract a single structured business event from an SME shopkeeper's plain-language note. Reply with JSON only, no prose or markdown.";
 
 const PROMPT = (text: string) =>
-  `You extract a single structured business event from an SME shopkeeper's plain-language note.
-- eventType: SALE_CREATED (sold/sale), PURCHASE_CREATED (bought/purchased from a supplier), ORDER_CREATED (a customer wants/needs something later), or EXPENSE_ADDED (rent, salary, utilities, fuel, etc.).
+  `Extract one business event from the note and return ONLY a single minified JSON object with exactly these keys:
+- eventType: one of "SALE_CREATED" (sold/sale), "PURCHASE_CREATED" (bought/purchased from a supplier), "ORDER_CREATED" (a customer wants/needs something later), "EXPENSE_ADDED" (rent, salary, utilities, fuel, etc.).
 - party: the customer or supplier name, or null.
 - product: the product name (singular, no unit words like "bags"/"packets"), or null.
 - quantity: numeric quantity, or null.
 - amount: total money value in rupees if stated, else null.
 - category: expense category (e.g. Rent, Utilities) for EXPENSE_ADDED, else null.
+Use null where a value is unknown. No extra keys, no commentary.
 
 Note: "${text}"`;
 
 export async function parseCommand(text: string): Promise<ParsedCommand> {
-  const client = getAnthropic();
-  if (client) {
+  const provider = getProvider();
+  if (provider) {
     try {
-      const res = await client.messages.create({
-        model: MODEL,
-        max_tokens: 1024,
-        messages: [{ role: "user", content: PROMPT(text) }],
-        // Cast keeps us decoupled from the installed SDK's exact param types.
-        output_config: { format: { type: "json_schema", schema: SCHEMA } },
-      } as never);
-      const parsed = extractJson<Omit<ParsedCommand, "engine">>((res as { content: unknown }).content);
+      const raw = await provider.complete({ system: SYSTEM, prompt: PROMPT(text), maxTokens: 1024 });
+      const parsed = extractJson<Omit<ParsedCommand, "engine">>(raw);
       if (parsed && parsed.eventType) {
-        return { ...normalize(parsed), engine: "claude" };
+        return { ...normalize(parsed), engine: provider.label };
       }
     } catch (err) {
-      console.warn("[nlp] Claude parse failed, falling back to heuristic:", err);
+      console.warn("[nlp] provider parse failed, falling back to heuristic:", err);
     }
   }
-  return { ...heuristicParse(text), engine: "heuristic" };
+  return { ...heuristicParse(text), engine: "Heuristic" };
 }
 
 function normalize(p: Partial<ParsedCommand>): Omit<ParsedCommand, "engine"> {
