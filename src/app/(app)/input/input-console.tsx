@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,9 @@ const EXAMPLES = [
   "Paid electricity bill 3200",
   "Anita Stores wants 5 flour bags",
 ];
+
+// Draft text survives navigating away and back (until it's actually parsed).
+const TEXT_KEY = "smartsme:smart-input:text";
 
 export function InputConsole({
   parties,
@@ -48,11 +51,39 @@ export function InputConsole({
   const [pending, start] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Restore anything typed before the user navigated away.
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(TEXT_KEY);
+      if (saved) setText(saved);
+    } catch {
+      /* sessionStorage unavailable — ignore */
+    }
+  }, []);
+
+  function updateText(v: string) {
+    setText(v);
+    try {
+      sessionStorage.setItem(TEXT_KEY, v);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function clearSavedText() {
+    try {
+      sessionStorage.removeItem(TEXT_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
+
   function reset() {
     setDraft(null);
     setError(null);
     setPreview(null);
     setText("");
+    clearSavedText();
     if (fileRef.current) fileRef.current.value = "";
   }
 
@@ -63,7 +94,12 @@ export function InputConsole({
       try {
         const res = await parseTextAction(text);
         if (res.error) setError(res.error);
-        else setDraft(res.draft!);
+        else {
+          // It's been parsed — the draft now holds the content, so the raw text
+          // no longer needs to persist across navigation.
+          clearSavedText();
+          setDraft(res.draft!);
+        }
       } catch {
         setError("Could not reach the server. Please try again.");
       }
@@ -139,7 +175,7 @@ export function InputConsole({
         <Card className="p-5">
           <Textarea
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => updateText(e.target.value)}
             placeholder="e.g. Sold 10 rice bags to Kumar Traders"
             className="min-h-28 text-base"
             onKeyDown={(e) => {
@@ -150,7 +186,7 @@ export function InputConsole({
             {EXAMPLES.map((ex) => (
               <button
                 key={ex}
-                onClick={() => setText(ex)}
+                onClick={() => updateText(ex)}
                 className="rounded-full border border-border px-3 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
               >
                 {ex}

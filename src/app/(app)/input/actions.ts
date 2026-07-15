@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import * as sc from "@/db/schema";
@@ -33,14 +33,38 @@ export interface Draft {
 
 export type ParseResult = { draft?: Draft; error?: string };
 
-function fuzzyFind<T extends { name: string }>(list: T[], q: string | null): T | undefined {
+/** Lowercase, drop punctuation, collapse whitespace — so "Anita Stores." and
+ *  "ANITA  STORES" compare equal. */
+function norm(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Fuzzy-matches an extracted name to a known party/product. Tries, in order:
+ * exact (normalized), substring either direction, then token-subset (every word
+ * of the shorter name appears in the other) so "Anita" resolves "Anita Stores".
+ */
+function bestMatch<T extends { name: string }>(list: T[], q: string | null): T | undefined {
   if (!q) return undefined;
-  const needle = q.trim().toLowerCase();
+  const needle = norm(q);
   if (!needle) return undefined;
-  return (
-    list.find((x) => x.name.toLowerCase() === needle) ??
-    list.find((x) => x.name.toLowerCase().includes(needle) || needle.includes(x.name.toLowerCase()))
-  );
+
+  const exact = list.find((x) => norm(x.name) === needle);
+  if (exact) return exact;
+
+  const sub = list.find((x) => {
+    const n = norm(x.name);
+    return n.length > 1 && (n.includes(needle) || needle.includes(n));
+  });
+  if (sub) return sub;
+
+  const nt = needle.split(" ").filter(Boolean);
+  return list.find((x) => {
+    const xt = norm(x.name).split(" ").filter(Boolean);
+    if (!xt.length) return false;
+    const [short, longSet] = nt.length <= xt.length ? [nt, new Set(xt)] : [xt, new Set(nt)];
+    return short.length > 0 && short.every((t) => longSet.has(t));
+  });
 }
 
 export async function parseTextAction(text: string): Promise<ParseResult> {
@@ -70,42 +94,62 @@ export async function parseTextAction(text: string): Promise<ParseResult> {
       };
     }
 
-    const parties = await db
+    // Match the party across ALL parties (not just the guessed type). A known
+    // party's own type is authoritative for sale-vs-purchase, so a named
+    // customer/supplier corrects a mis-guessed direction and always links.
+    const allParties = await db
       .select()
       .from(sc.parties)
-      .where(
-        and(
-          eq(sc.parties.businessId, business.id),
-          eq(sc.parties.type, suggestedType === "purchase" ? "supplier" : "customer"),
-        ),
-      );
+      .where(eq(sc.parties.businessId, business.id));
     const products = await db.select().from(sc.products).where(eq(sc.products.businessId, business.id));
 
-    const matchedParty = fuzzyFind(parties, parsed.party);
-    const matchedProduct = fuzzyFind(products, parsed.product);
-    const qty = parsed.quantity && parsed.quantity > 0 ? parsed.quantity : 1;
-    const price = matchedProduct
-      ? suggestedType === "purchase"
-        ? matchedProduct.purchasePrice
-        : matchedProduct.sellingPrice
-      : parsed.amount && qty
-        ? round2(parsed.amount / qty)
-        : 0;
+    const matchedParty = bestMatch(allParties, parsed.party);
+    const effectiveType: "sale" | "purchase" = matchedParty
+      ? matchedParty.type === "supplier"
+        ? "purchase"
+        : "sale"
+      : suggestedType;
+
+    let items: DraftItem[];
+    if (parsed.allInventory && effectiveType === "sale") {
+      // "Sell the entire inventory" — one line per in-stock product, at its
+      // full quantity and selling price. The confirm screen lets the user trim.
+      const inStock = products.filter((p) => p.stock > 0);
+      items = inStock.length
+        ? inStock.map((p) => ({
+            productId: p.id,
+            description: p.name,
+            quantity: p.stock,
+            unitPrice: p.sellingPrice,
+          }))
+        : [{ productId: null, description: parsed.product ?? "Item", quantity: 1, unitPrice: 0 }];
+    } else {
+      const matchedProduct = bestMatch(products, parsed.product);
+      const qty = parsed.quantity && parsed.quantity > 0 ? parsed.quantity : 1;
+      const price = matchedProduct
+        ? effectiveType === "purchase"
+          ? matchedProduct.purchasePrice
+          : matchedProduct.sellingPrice
+        : parsed.amount && qty
+          ? round2(parsed.amount / qty)
+          : 0;
+      items = [
+        {
+          productId: matchedProduct?.id ?? null,
+          description: matchedProduct?.name ?? parsed.product ?? "Item",
+          quantity: qty,
+          unitPrice: price,
+        },
+      ];
+    }
 
     return {
       draft: {
-        suggestedType,
+        suggestedType: effectiveType,
         engine: parsed.engine,
         partyId: matchedParty?.id ?? null,
-        partyName: parsed.party ?? null,
-        items: [
-          {
-            productId: matchedProduct?.id ?? null,
-            description: matchedProduct?.name ?? parsed.product ?? "Item",
-            quantity: qty,
-            unitPrice: price,
-          },
-        ],
+        partyName: matchedParty?.name ?? parsed.party ?? null,
+        items,
         amount: parsed.amount ?? null,
         category: null,
         note: text.trim(),
@@ -129,27 +173,31 @@ export async function parseImageAction(dataUrl: string): Promise<ParseResult> {
     const base64 = match[3];
 
     const invoice = await parseInvoiceImage(base64, media);
-    const suggestedType = invoice.docType === "purchase" ? "purchase" : "sale";
 
-    const parties = await db
+    // Match the named party across ALL parties, then let a confident match fix
+    // the sale-vs-purchase direction (e.g. a handwritten customer name the model
+    // defaulted to "purchase"). This is what makes a known customer link.
+    const allParties = await db
       .select()
       .from(sc.parties)
-      .where(
-        and(
-          eq(sc.parties.businessId, business.id),
-          eq(sc.parties.type, suggestedType === "purchase" ? "supplier" : "customer"),
-        ),
-      );
+      .where(eq(sc.parties.businessId, business.id));
     const products = await db.select().from(sc.products).where(eq(sc.products.businessId, business.id));
-    const matchedParty = fuzzyFind(parties, invoice.party);
+    const matchedParty = bestMatch(allParties, invoice.party);
+    const effectiveType: "sale" | "purchase" = matchedParty
+      ? matchedParty.type === "supplier"
+        ? "purchase"
+        : "sale"
+      : invoice.docType === "purchase"
+        ? "purchase"
+        : "sale";
 
     const items: DraftItem[] = invoice.lineItems.map((li) => {
-      const mp = fuzzyFind(products, li.product);
+      const mp = bestMatch(products, li.product);
       const price =
         li.unitPrice != null && li.unitPrice > 0
           ? li.unitPrice
           : mp
-            ? suggestedType === "purchase"
+            ? effectiveType === "purchase"
               ? mp.purchasePrice
               : mp.sellingPrice
             : 0;
@@ -163,10 +211,10 @@ export async function parseImageAction(dataUrl: string): Promise<ParseResult> {
 
     return {
       draft: {
-        suggestedType,
+        suggestedType: effectiveType,
         engine: aiStatus()?.label ?? "AI",
         partyId: matchedParty?.id ?? null,
-        partyName: invoice.party ?? null,
+        partyName: matchedParty?.name ?? invoice.party ?? null,
         items: items.length ? items : [{ productId: null, description: "Item", quantity: 1, unitPrice: 0 }],
         amount: invoice.total ?? null,
         category: null,

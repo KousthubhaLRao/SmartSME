@@ -7,6 +7,8 @@ export interface ParsedCommand {
   quantity: number | null;
   amount: number | null;
   category: string | null;
+  /** True when the note refers to the whole inventory ("sell the entire stock"). */
+  allInventory: boolean;
   /** The provider label that parsed it (e.g. "Anthropic Claude"), or "Heuristic". */
   engine: string;
 }
@@ -22,6 +24,7 @@ const PROMPT = (text: string) =>
 - quantity: numeric quantity, or null.
 - amount: total money value in rupees if stated, else null.
 - category: expense category (e.g. Rent, Utilities) for EXPENSE_ADDED, else null.
+- allInventory: true if the note refers to the ENTIRE inventory / all stock / everything in stock (e.g. "sell the entire inventory", "clear out all stock", "sell everything"); otherwise false. When true, leave product and quantity as null.
 Use null where a value is unknown. No extra keys, no commentary.
 
 Note: "${text}"`;
@@ -50,6 +53,7 @@ function normalize(p: Partial<ParsedCommand>): Omit<ParsedCommand, "engine"> {
     quantity: p.quantity != null ? Number(p.quantity) : null,
     amount: p.amount != null ? Number(p.amount) : null,
     category: p.category ?? null,
+    allInventory: Boolean(p.allInventory),
   };
 }
 
@@ -60,6 +64,10 @@ const UNIT_WORDS =
 // point; the confirmation screen lets the user correct anything before publish.
 export function heuristicParse(text: string): Omit<ParsedCommand, "engine"> {
   const lower = text.toLowerCase();
+
+  const allInventory =
+    /\b(entire|all|whole|complete|full)\s+(inventory|stock|stocks|goods|products?)\b/.test(lower) ||
+    /\b(sell|clear|sold|liquidat\w*)\s+everything\b/.test(lower);
 
   let eventType: ParsedCommand["eventType"] = "SALE_CREATED";
   if (/\b(bought|buy|purchase[ds]?|received|restock(?:ed)?)\b/.test(lower) && /\bfrom\b/.test(lower)) {
@@ -98,7 +106,7 @@ export function heuristicParse(text: string): Omit<ParsedCommand, "engine"> {
       text.match(/\bfor\s+([A-Za-z\s]+)/i) ??
       text.match(/\b(rent|salary|electricity|utilities?|fuel|transport|internet|maintenance|misc\w*)\b/i);
     const category = catMatch ? titleCase(catMatch[1].trim()) : "General";
-    return { eventType, party: null, product: null, quantity: null, amount, category };
+    return { eventType, party: null, product: null, quantity: null, amount, category, allInventory: false };
   }
 
   // Product = words between the quantity and "to/from", with unit words stripped.
@@ -116,6 +124,7 @@ export function heuristicParse(text: string): Omit<ParsedCommand, "engine"> {
     quantity: firstNumber,
     amount,
     category: null,
+    allInventory,
   };
 }
 
