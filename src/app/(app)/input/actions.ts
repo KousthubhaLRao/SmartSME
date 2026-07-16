@@ -233,6 +233,8 @@ export async function publishDraftAction(formData: FormData): Promise<{ error?: 
     const source = String(formData.get("source") ?? "nlp");
     const partyId = String(formData.get("partyId") ?? "") || null;
     const amountPaid = Number(formData.get("amountPaid") ?? 0);
+    const discountType = (String(formData.get("discountType") ?? "none") as "none" | "amount" | "percentage") || "none";
+    const discountValue = Number(formData.get("discountValue") ?? 0);
 
     if (type === "expense") {
       await createExpense(business.id, {
@@ -253,7 +255,7 @@ export async function publishDraftAction(formData: FormData): Promise<{ error?: 
       revalidatePath("/dashboard");
       return { ok: `Purchase ${pur.referenceNumber} created.` };
     }
-    const sale = await createSale(business.id, { partyId, items, amountPaid, source });
+    const sale = await createSale(business.id, { partyId, items, amountPaid, discountType, discountValue, source });
     revalidatePath("/sales");
     revalidatePath("/dashboard");
     return { ok: `Sale ${sale.invoiceNumber} created.` };
