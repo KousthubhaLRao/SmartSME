@@ -22,13 +22,20 @@ export function PartyDialog({ party, defaultType }: { party?: PartyLike; default
   const editing = Boolean(party);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const router = useRouter();
 
   function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    const phone = String(fd.get("phone") ?? "");
+    if (phone && !/^\+?[0-9]+$/.test(phone)) {
+      setPhoneError("Phone number can only contain digits and an optional leading +");
+      return;
+    }
     setError(null);
+    setPhoneError(null);
     start(async () => {
       const res = editing ? await updatePartyAction(party!.id, fd) : await createPartyAction(fd);
       if (res.error) setError(res.error);
@@ -37,6 +44,15 @@ export function PartyDialog({ party, defaultType }: { party?: PartyLike; default
         router.refresh();
       }
     });
+  }
+
+  function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const value = e.target.value;
+    if (value && !/^\+?[0-9]*$/.test(value)) {
+      setPhoneError("Phone number can only contain digits and an optional leading +");
+    } else {
+      setPhoneError(null);
+    }
   }
 
   return (
@@ -69,7 +85,15 @@ export function PartyDialog({ party, defaultType }: { party?: PartyLike; default
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Phone">
-              <Input name="phone" defaultValue={party?.phone ?? ""} placeholder="+91 …" />
+              <Input
+                name="phone"
+                defaultValue={party?.phone ?? ""}
+                placeholder="+91 …"
+                inputMode="numeric"
+                onChange={handlePhoneChange}
+                pattern="^\\+?[0-9]+$"
+              />
+              {phoneError && <p className="mt-1 text-sm text-destructive">{phoneError}</p>}
             </Field>
             <Field label="Email">
               <Input name="email" type="email" defaultValue={party?.email ?? ""} placeholder="name@business.com" />

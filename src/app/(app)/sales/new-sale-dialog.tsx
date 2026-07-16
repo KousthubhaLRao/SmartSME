@@ -67,6 +67,18 @@ export function NewSaleDialog({
             taxRate={taxRate}
             currency={currency}
           />
+          <div className="grid gap-3 md:grid-cols-2">
+            <Field label="Discount type">
+              <Select name="discountType" defaultValue="none">
+                <option value="none">No discount</option>
+                <option value="amount">Amount</option>
+                <option value="percentage">Percentage</option>
+              </Select>
+            </Field>
+            <Field label="Discount value" hint="Enter amount or % depending on the selected type.">
+              <Input name="discountValue" type="number" min={0} step="0.01" defaultValue={0} />
+            </Field>
+          </div>
           <Field label="Amount paid" hint="Leave 0 for a credit sale (unpaid).">
             <Input name="amountPaid" type="number" min={0} step="0.01" defaultValue={0} />
           </Field>

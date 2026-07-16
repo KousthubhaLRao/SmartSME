@@ -18,8 +18,31 @@ export interface CreateSaleInput {
   partyId?: string | null;
   items: SaleLineInput[];
   amountPaid?: number;
+  discountType?: "none" | "amount" | "percentage";
+  discountValue?: number;
   notes?: string | null;
   source?: string;
+}
+
+export interface SaleTotals {
+  subtotal: number;
+  discountAmount: number;
+  tax: number;
+  total: number;
+}
+
+export function calculateSaleTotals(subtotal: number, taxRate: number, discountType: "none" | "amount" | "percentage" = "none", discountValue = 0): SaleTotals {
+  const safeSubtotal = round2(Math.max(0, subtotal));
+  let discountAmount = 0;
+  if (discountType === "amount") {
+    discountAmount = round2(Math.max(0, discountValue));
+  } else if (discountType === "percentage") {
+    discountAmount = round2(safeSubtotal * Math.max(0, discountValue) / 100);
+  }
+  const discountedSubtotal = round2(Math.max(0, safeSubtotal - discountAmount));
+  const tax = round2(discountedSubtotal * (taxRate / 100));
+  const total = round2(discountedSubtotal + tax);
+  return { subtotal: safeSubtotal, discountAmount, tax, total };
 }
 
 /**
@@ -57,8 +80,12 @@ export async function createSale(businessId: string, input: CreateSaleInput) {
 
   const [biz] = await db.select().from(s.businesses).where(eq(s.businesses.id, businessId));
   const subtotal = round2(items.reduce((a, i) => a + i.quantity * i.unitPrice, 0));
-  const tax = round2(subtotal * (biz.taxRate / 100));
-  const total = round2(subtotal + tax);
+  const { tax, total, discountAmount } = calculateSaleTotals(
+    subtotal,
+    biz.taxRate,
+    input.discountType ?? "none",
+    input.discountValue ?? 0,
+  );
   const rawPaid = input.amountPaid ?? 0;
   if (!Number.isFinite(rawPaid)) throw new Error("Amount paid must be a valid number.");
   const amountPaid = round2(Math.max(0, Math.min(rawPaid, total)));

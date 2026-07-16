@@ -3,6 +3,10 @@ import { db } from "@/db";
 import * as s from "@/db/schema";
 import { round2 } from "@/lib/utils";
 
+export function calculateOutstandingTotal<T extends { total: number; amountPaid: number }>(rows: T[]): number {
+  return round2(rows.reduce((acc, row) => acc + Math.max(0, row.total - row.amountPaid), 0));
+}
+
 function clamp(n: number, lo = 0, hi = 100): number {
   return Math.max(lo, Math.min(hi, Math.round(n)));
 }
@@ -49,9 +53,11 @@ export async function loadOverview(businessId: string, days = 14): Promise<Overv
   const totalSales = round2(sales.reduce((a, x) => a + x.total, 0));
   const totalPurchases = round2(purchases.reduce((a, x) => a + x.total, 0));
   const totalExpenses = round2(expenses.reduce((a, x) => a + x.amount, 0));
-  const receivable = round2(
+  const receivableFromSales = calculateOutstandingTotal(sales);
+  const receivableFromParties = round2(
     parties.filter((p) => p.type === "customer" && p.balance > 0).reduce((a, p) => a + p.balance, 0),
   );
+  const receivable = round2(receivableFromSales + receivableFromParties);
   const payable = round2(
     parties.filter((p) => p.type === "supplier" && p.balance > 0).reduce((a, p) => a + p.balance, 0),
   );
