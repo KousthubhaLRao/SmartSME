@@ -54,7 +54,7 @@ export default async function DashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Revenue chart */}
-        <Card className="lg:col-span-2">
+        <Card className="overflow-hidden lg:col-span-2">
           <CardHeader className="flex-row items-center justify-between">
             <div>
               <CardTitle>Revenue trend</CardTitle>
@@ -65,23 +65,36 @@ export default async function DashboardPage() {
             </Link>
           </CardHeader>
           <CardContent>
-            <MiniBars data={o.revenueSeries} height={160} />
+            <div className="rounded-xl bg-[linear-gradient(180deg,color-mix(in_oklab,var(--primary)_5%,transparent),transparent)] p-2">
+              <MiniBars data={o.revenueSeries} height={160} />
+            </div>
           </CardContent>
         </Card>
 
         {/* Business health */}
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader>
             <CardTitle>Business health</CardTitle>
             <CardDescription>Overall score</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mb-4 flex items-end gap-2">
-              <span className="text-4xl font-semibold tracking-tight">{o.health.overall}</span>
-              <span className="mb-1 text-sm text-muted-foreground">/ 100</span>
-              <Badge className="mb-1 ml-auto" tone={healthTone(o.health.overall)}>
-                {healthLabel(o.health.overall)}
-              </Badge>
+            <div className="mb-6 flex items-center justify-between gap-4">
+              <div className="flex items-end gap-2">
+                <span className="text-4xl font-bold tracking-[-0.05em]">{o.health.overall}</span>
+                <span className="mb-1 text-sm text-muted-foreground">/ 100</span>
+                <Badge className="mb-1" tone={healthTone(o.health.overall)}>
+                  {healthLabel(o.health.overall)}
+                </Badge>
+              </div>
+              <div
+                className="grid h-20 w-20 shrink-0 place-items-center rounded-full"
+                style={{ background: `conic-gradient(var(--success) ${o.health.overall * 3.6}deg, var(--muted) 0deg)` }}
+                aria-label={`Business health score ${o.health.overall} out of 100`}
+              >
+                <span className="grid h-14 w-14 place-items-center rounded-full bg-card text-success">
+                  <Icon name="check" size={24} strokeWidth={3} />
+                </span>
+              </div>
             </div>
             <div className="space-y-2.5">
               <HealthRow label="Inventory" score={o.health.inventory} />

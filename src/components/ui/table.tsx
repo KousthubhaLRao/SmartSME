@@ -14,18 +14,18 @@ export function THead({ className, ...props }: React.HTMLAttributes<HTMLTableSec
 }
 
 export function TBody({ className, ...props }: React.HTMLAttributes<HTMLTableSectionElement>) {
-  return <tbody className={cn("divide-y divide-border", className)} {...props} />;
+  return <tbody className={cn("divide-y divide-border/80", className)} {...props} />;
 }
 
 export function TR({ className, ...props }: React.HTMLAttributes<HTMLTableRowElement>) {
-  return <tr className={cn("hover:bg-muted/40 transition-colors", className)} {...props} />;
+  return <tr className={cn("hover:bg-primary/[0.035] transition-colors", className)} {...props} />;
 }
 
 export function TH({ className, ...props }: React.ThHTMLAttributes<HTMLTableCellElement>) {
   return (
     <th
       className={cn(
-        "h-10 px-3 text-left align-middle text-xs font-semibold uppercase tracking-wide",
+        "h-11 px-4 text-left align-middle text-[11px] font-semibold uppercase tracking-[0.06em]",
         className,
       )}
       {...props}
@@ -34,5 +34,5 @@ export function TH({ className, ...props }: React.ThHTMLAttributes<HTMLTableCell
 }
 
 export function TD({ className, ...props }: React.TdHTMLAttributes<HTMLTableCellElement>) {
-  return <td className={cn("px-3 py-3 align-middle", className)} {...props} />;
+  return <td className={cn("px-4 py-3.5 align-middle", className)} {...props} />;
 }

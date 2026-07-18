@@ -6,7 +6,7 @@ type Size = "sm" | "md" | "lg" | "icon";
 
 const variants: Record<Variant, string> = {
   primary:
-    "bg-primary text-primary-foreground shadow-sm hover:bg-primary-hover hover:shadow-md active:shadow-sm",
+    "bg-primary text-primary-foreground shadow-[0_6px_16px_-5px_color-mix(in_oklab,var(--primary)_70%,transparent)] hover:bg-primary-hover hover:shadow-md active:shadow-sm",
   secondary:
     "border border-border bg-secondary text-secondary-foreground hover:bg-muted",
   outline:
@@ -35,7 +35,7 @@ export function buttonVariants({
   return cn(
     // Tactile base: smooth multi-property transition, a subtle press on click,
     // and a clear focus ring. No brightness tricks.
-    "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium select-none",
+    "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl font-medium select-none",
     "transition-[background-color,border-color,box-shadow,transform,color] duration-150 ease-out",
     "active:translate-y-px focus-visible:focus-ring",
     "disabled:opacity-50 disabled:pointer-events-none disabled:shadow-none",

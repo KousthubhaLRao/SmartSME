@@ -13,7 +13,7 @@ const COLLAPSE_KEY = "smartsme:sidebar-collapsed";
 const WIDTH_KEY = "smartsme:sidebar-width";
 const MIN_WIDTH = 190;
 const MAX_WIDTH = 460;
-const DEFAULT_WIDTH = 256;
+const DEFAULT_WIDTH = 242;
 const RAIL_WIDTH = 64;
 
 type NavItem = { href: string; label: string; icon: IconName };
@@ -130,10 +130,10 @@ export function AppShell({
       title={mini ? label : undefined}
       aria-label={mini ? label : undefined}
       className={cn(
-        "flex items-center gap-3 rounded-lg py-2 text-sm font-medium transition-colors",
+        "flex items-center gap-3 rounded-xl py-2.5 text-sm font-medium transition-[background-color,color,box-shadow]",
         mini ? "justify-center px-0" : "px-3",
         isActive(href)
-          ? "bg-accent text-accent-foreground"
+          ? "bg-accent text-accent-foreground shadow-sm"
           : "text-muted-foreground hover:bg-muted hover:text-foreground",
       )}
     >
@@ -147,7 +147,7 @@ export function AppShell({
     <>
       <div
         className={cn(
-          "flex h-16 items-center border-b border-border",
+          "flex h-20 items-center",
           mini ? "justify-center px-2" : "px-4",
         )}
       >
@@ -161,11 +161,11 @@ export function AppShell({
         </Link>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-6 overflow-y-auto px-3 py-4">
+      <nav className="flex flex-1 flex-col gap-6 overflow-y-auto px-3 py-5">
         {NAV.map((group, gi) => (
           <div key={gi} className="flex flex-col gap-1">
             {group.label && !mini && (
-              <div className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+              <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground/70">
                 {group.label}
               </div>
             )}
@@ -174,6 +174,15 @@ export function AppShell({
         ))}
       </nav>
 
+      {!mini && (
+        <div className="mx-3 mb-4 rounded-2xl border border-primary/15 bg-[linear-gradient(145deg,color-mix(in_oklab,var(--primary)_15%,var(--card)),var(--card))] p-4">
+          <p className="text-sm font-semibold">Grow your business</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">Use Smart Input to turn everyday notes into records.</p>
+          <Link href="/input" className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
+            Explore Smart Input <Icon name="chevronRight" size={14} />
+          </Link>
+        </div>
+      )}
       <div className="border-t border-border p-3">{navLink("/settings", "Settings", "settings", mini)}</div>
     </>
   );
@@ -184,7 +193,7 @@ export function AppShell({
       <aside
         style={{ width: collapsed ? RAIL_WIDTH : width }}
         className={cn(
-          "sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border bg-card lg:flex",
+          "sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border/80 bg-card/90 backdrop-blur-xl lg:flex",
           !dragging && "transition-[width] duration-200 ease-out",
         )}
       >
@@ -213,7 +222,7 @@ export function AppShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Topbar */}
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-card/80 px-4 backdrop-blur sm:px-6">
+        <header className="sticky top-0 z-30 flex h-20 items-center gap-3 border-b border-border/70 bg-background/75 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
           <button
             onClick={() => setMobileOpen(true)}
             className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted lg:hidden"
@@ -221,15 +230,20 @@ export function AppShell({
           >
             <Icon name="menu" size={20} />
           </button>
-          <div className="flex min-w-0 items-center gap-2">
-            <Icon name="building" size={16} className="text-muted-foreground" />
-            <span className="truncate text-sm font-medium">{businessName}</span>
+          <div className="hidden min-w-0 lg:block">
+            <p className="text-lg font-bold tracking-[-0.03em]">Welcome back, {userName.split(" ")[0]}!</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">Here&apos;s what&apos;s happening with {businessName} today.</p>
           </div>
 
-          <div className="ml-auto flex items-center gap-1">
+          <div className="ml-auto flex items-center gap-2">
+            <label className="hidden h-11 w-72 items-center gap-2 rounded-xl border border-border bg-card px-3 text-muted-foreground shadow-sm xl:flex">
+              <Icon name="search" size={18} />
+              <input aria-label="Search" placeholder="Search anything..." className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground" />
+              <kbd className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold">⌘ K</kbd>
+            </label>
             <Link
               href="/notifications"
-              className="relative inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+              className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
               aria-label="Notifications"
             >
               <Icon name="bell" size={18} />
@@ -241,7 +255,7 @@ export function AppShell({
             </Link>
             <ThemeToggle />
             <div className="ml-1 flex items-center gap-2 border-l border-border pl-3">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-xs font-semibold text-accent-foreground">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-foreground">
                 {initials(userName)}
               </span>
               <div className="hidden leading-tight sm:block">
@@ -252,7 +266,7 @@ export function AppShell({
                 <button
                   type="submit"
                   aria-label="Sign out"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
                 >
                   <Icon name="logout" size={18} />
                 </button>
@@ -261,7 +275,7 @@ export function AppShell({
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
+        <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-6 sm:px-6 lg:px-8">
           {children}
         </main>
       </div>

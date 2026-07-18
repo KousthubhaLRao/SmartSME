@@ -7,27 +7,27 @@
 /* the default; the .dark class on <html> flips them.                  */
 /* ------------------------------------------------------------------ */
 :root {
-  --background: #f7f7f5;
-  --foreground: #1a1a1e;
+  --background: #f6f7fb;
+  --foreground: #151735;
 
   --card: #ffffff;
-  --card-foreground: #1a1a1e;
+  --card-foreground: #151735;
 
   --popover: #ffffff;
   --popover-foreground: #1a1a1e;
 
-  --muted: #f0f0ec;
-  --muted-foreground: #6b6b73;
+  --muted: #f2f3fa;
+  --muted-foreground: #69708e;
 
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
+  --primary: #5037f4;
+  --primary-hover: #4228d9;
   --primary-foreground: #ffffff;
 
-  --secondary: #f0f0ec;
-  --secondary-foreground: #1a1a1e;
+  --secondary: #f0efff;
+  --secondary-foreground: #252060;
 
-  --accent: #ecebfe;
-  --accent-foreground: #4338ca;
+  --accent: #eeecff;
+  --accent-foreground: #4930df;
 
   --destructive: #dc2626;
   --destructive-hover: #b91c1c;
@@ -40,9 +40,9 @@
   --info: #2563eb;
   --info-foreground: #ffffff;
 
-  --border: #e6e5e1;
-  --input: #dcdbd6;
-  --ring: #6366f1;
+  --border: #e7e8f1;
+  --input: #dfe1ed;
+  --ring: #6249f5;
 
   --chart-1: #4f46e5;
   --chart-2: #0ea5e9;
@@ -50,31 +50,31 @@
   --chart-4: #ec4899;
   --chart-5: #14b8a6;
 
-  --radius: 0.625rem;
+  --radius: 0.875rem;
 }
 
 .dark {
-  --background: #0b0b0f;
-  --foreground: #ededf0;
+  --background: #07070a;
+  --foreground: #f5f5fb;
 
-  --card: #15151b;
-  --card-foreground: #ededf0;
+  --card: #0e0e14;
+  --card-foreground: #f5f5fb;
 
-  --popover: #15151b;
-  --popover-foreground: #ededf0;
+  --popover: #111119;
+  --popover-foreground: #f5f5fb;
 
-  --muted: #1e1e26;
-  --muted-foreground: #9a9aa6;
+  --muted: #181820;
+  --muted-foreground: #9999aa;
 
-  --primary: #6366f1;
-  --primary-hover: #818cf8;
+  --primary: #6847ff;
+  --primary-hover: #8067ff;
   --primary-foreground: #ffffff;
 
-  --secondary: #1e1e26;
-  --secondary-foreground: #ededf0;
+  --secondary: #1c1837;
+  --secondary-foreground: #e6e0ff;
 
-  --accent: #26254f;
-  --accent-foreground: #c7d2fe;
+  --accent: #211653;
+  --accent-foreground: #d8d0ff;
 
   --destructive: #f05252;
   --destructive-hover: #f87171;
@@ -87,9 +87,9 @@
   --info: #60a5fa;
   --info-foreground: #0a1a33;
 
-  --border: #2a2a33;
-  --input: #33333d;
-  --ring: #818cf8;
+  --border: #292933;
+  --input: #343440;
+  --ring: #8067ff;
 
   --chart-1: #818cf8;
   --chart-2: #38bdf8;
@@ -161,9 +161,13 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    background-image: radial-gradient(circle at 45% -20%, color-mix(in oklab, var(--primary) 9%, transparent), transparent 34rem);
   }
   ::selection {
     background: color-mix(in oklab, var(--primary) 28%, transparent);
+  }
+  button, a, input, select, textarea {
+    -webkit-tap-highlight-color: transparent;
   }
   /* Slim scrollbars */
   * {

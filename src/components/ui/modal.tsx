@@ -46,19 +46,19 @@ export function Modal({
         aria-modal="true"
         aria-label={title}
         className={cn(
-          "relative z-10 my-8 w-full max-w-lg rounded-xl border border-border bg-card shadow-xl",
+          "relative z-10 my-8 w-full max-w-lg rounded-2xl border border-border bg-card shadow-xl",
           className,
         )}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+        <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-5">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+            <h2 className="text-lg font-bold tracking-[-0.03em]">{title}</h2>
             {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
           </div>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="-mr-1 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="-mr-1 inline-flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             <Icon name="x" size={18} />
           </button>
