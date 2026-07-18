@@ -1,0 +1,17 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { calculatePurchaseTotals } from "./purchases";
+
+test("purchase discounts reduce the subtotal before tax", () => {
+  const totals = calculatePurchaseTotals(100, 10, "amount", 10);
+  assert.equal(totals.discountAmount, 10);
+  assert.equal(totals.tax, 9);
+  assert.equal(totals.total, 99);
+});
+
+test("percentage purchase discounts calculate from the subtotal", () => {
+  const totals = calculatePurchaseTotals(100, 10, "percentage", 10);
+  assert.equal(totals.discountAmount, 10);
+  assert.equal(totals.tax, 9);
+  assert.equal(totals.total, 99);
+});

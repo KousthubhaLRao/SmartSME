@@ -201,6 +201,15 @@ function PurchaseDetailView({ detail, currency }: { detail: PurchaseDetail; curr
       <div className="flex justify-end">
         <div className="w-full max-w-xs space-y-1.5 text-sm">
           <Row label="Subtotal" value={money(purchase.subtotal, currency)} />
+          {purchase.discountAmount > 0 && (
+            <div className="flex justify-between text-success">
+              <span>
+                Discount
+                {purchase.discountType === "percentage" ? ` (${purchase.discountValue}%)` : ""}
+              </span>
+              <span className="tabular-nums">- {money(purchase.discountAmount, currency)}</span>
+            </div>
+          )}
           <Row label="Tax" value={money(purchase.tax, currency)} />
           <div className="flex justify-between border-t border-border pt-2 text-base font-semibold">
             <span>Total</span>

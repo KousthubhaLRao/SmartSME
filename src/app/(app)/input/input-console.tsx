@@ -312,7 +312,9 @@ function DraftConfirm({
 }) {
   const partyTypeFor = (t: Draft["suggestedType"]) => (t === "purchase" ? "supplier" : "customer");
   const [type, setType] = useState<Draft["suggestedType"]>(draft.suggestedType);
-  const [discountType, setDiscountType] = useState<Draft["discountType"]>(draft.discountType);
+  const [discountType, setDiscountType] = useState<Draft["discountType"]>(
+    draft.discountType === "none" ? "percentage" : draft.discountType,
+  );
   const [discountValue, setDiscountValue] = useState<number>(draft.discountValue);
   const [partyId, setPartyId] = useState<string>(
     draft.partyId && parties.some((p) => p.id === draft.partyId && p.type === partyTypeFor(draft.suggestedType))
@@ -341,8 +343,8 @@ function DraftConfirm({
       suggestedType: type,
       partyId: partyId || null,
       items,
-      discountType: type === "sale" ? discountType : "none",
-      discountValue: type === "sale" ? discountValue : 0,
+      discountType: type === "expense" ? "none" : discountType,
+      discountValue: type === "expense" ? 0 : discountValue,
     });
     // onPersist/draft are stable; only re-persist when the working values change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -432,8 +434,8 @@ function DraftConfirm({
               taxRate={taxRate}
               currency={currency}
               initialRows={draft.items}
-              discountType={type === "sale" ? discountType : "none"}
-              discountValue={type === "sale" ? discountValue : 0}
+              discountType={discountType}
+              discountValue={discountValue}
               onRowsChange={(rows) =>
                 setItems(
                   rows.map((r) => ({
@@ -445,31 +447,29 @@ function DraftConfirm({
                 )
               }
             />
-            {type === "sale" && (
-              <div className="grid gap-3 md:grid-cols-2">
-                <Field label="Discount type">
-                  <Select
-                    name="discountType"
-                    value={discountType}
-                    onChange={(e) => setDiscountType(e.target.value as Draft["discountType"])}
-                  >
-                    <option value="none">No discount</option>
-                    <option value="amount">Amount</option>
-                    <option value="percentage">Percentage</option>
-                  </Select>
-                </Field>
-                <Field label="Discount value" hint="Enter amount or % depending on the selected type.">
-                  <Input
-                    name="discountValue"
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={discountValue || ""}
-                    onChange={(e) => setDiscountValue(Number(e.target.value) || 0)}
-                  />
-                </Field>
-              </div>
-            )}
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="Discount type">
+                <Select
+                  name="discountType"
+                  value={discountType}
+                  onChange={(e) => setDiscountType(e.target.value as Draft["discountType"])}
+                >
+                  <option value="percentage">Percentage</option>
+                  <option value="amount">Amount</option>
+                </Select>
+              </Field>
+              <Field label="Discount" hint={discountType === "amount" ? "Enter the discount amount." : "Enter the discount percentage."}>
+                <Input
+                  name="discountValue"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={discountValue || ""}
+                  onChange={(e) => setDiscountValue(Number(e.target.value) || 0)}
+                  placeholder={discountType === "amount" ? "20" : "10"}
+                />
+              </Field>
+            </div>
             <Field label="Amount paid" hint="Leave 0 to keep it as credit.">
               <Input name="amountPaid" type="number" min={0} step="0.01" defaultValue={0} />
             </Field>

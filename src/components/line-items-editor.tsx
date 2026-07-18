@@ -46,7 +46,7 @@ export function LineItemsEditor({
   currency: string;
   name?: string;
   initialRows?: InitialRow[];
-  /** Live discount to fold into the shown totals (sales only). */
+  /** Live discount to fold into the shown totals. */
   discountType?: "none" | "amount" | "percentage";
   discountValue?: number;
   /** Fires whenever the rows change, so a parent can persist the working edit. */

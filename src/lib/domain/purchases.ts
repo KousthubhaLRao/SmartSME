@@ -4,7 +4,7 @@ import * as s from "@/db/schema";
 import { publish } from "@/lib/events/publish";
 import { paymentStatusFor } from "@/lib/workflow/engine";
 import { drainQueue } from "@/worker/loop";
-import { round2 } from "@/lib/utils";
+import { money, round2 } from "@/lib/utils";
 import { assertPartyOwned, cleanLineItems, loadOwnedProducts } from "./line-items";
 
 export interface PurchaseLineInput {
@@ -18,8 +18,28 @@ export interface CreatePurchaseInput {
   partyId?: string | null;
   items: PurchaseLineInput[];
   amountPaid?: number;
+  discountType?: "none" | "amount" | "percentage";
+  discountValue?: number;
   notes?: string | null;
   source?: string;
+}
+
+export function calculatePurchaseTotals(
+  subtotal: number,
+  taxRate: number,
+  discountType: "none" | "amount" | "percentage" = "none",
+  discountValue = 0,
+) {
+  const safeSubtotal = round2(Math.max(0, subtotal));
+  const discountAmount =
+    discountType === "amount"
+      ? round2(Math.max(0, discountValue))
+      : discountType === "percentage"
+        ? round2((safeSubtotal * Math.max(0, discountValue)) / 100)
+        : 0;
+  const discountedSubtotal = round2(Math.max(0, safeSubtotal - discountAmount));
+  const tax = round2(discountedSubtotal * (taxRate / 100));
+  return { discountAmount, tax, total: round2(discountedSubtotal + tax) };
 }
 
 export async function createPurchase(businessId: string, input: CreatePurchaseInput) {
@@ -31,8 +51,17 @@ export async function createPurchase(businessId: string, input: CreatePurchaseIn
 
   const [biz] = await db.select().from(s.businesses).where(eq(s.businesses.id, businessId));
   const subtotal = round2(items.reduce((a, i) => a + i.quantity * i.unitPrice, 0));
-  const tax = round2(subtotal * (biz.taxRate / 100));
-  const total = round2(subtotal + tax);
+  const discountType = input.discountType ?? "none";
+  const discountValue = input.discountValue ?? 0;
+  if (discountType !== "none" && !(discountValue >= 0)) {
+    throw new Error("Discount must be a valid positive number.");
+  }
+  const { tax, total, discountAmount } = calculatePurchaseTotals(subtotal, biz.taxRate, discountType, discountValue);
+  if (discountType !== "none" && discountAmount > subtotal) {
+    throw new Error(
+      `Discount (${money(discountAmount, biz.currency)}) is more than the purchase value (${money(subtotal, biz.currency)}). Lower the discount to continue.`,
+    );
+  }
   const rawPaid = input.amountPaid ?? 0;
   if (!Number.isFinite(rawPaid)) throw new Error("Amount paid must be a valid number.");
   const amountPaid = round2(Math.max(0, Math.min(rawPaid, total)));
@@ -52,6 +81,9 @@ export async function createPurchase(businessId: string, input: CreatePurchaseIn
         partyId: input.partyId || null,
         referenceNumber,
         subtotal,
+        discountType,
+        discountValue,
+        discountAmount,
         tax,
         total,
         amountPaid,

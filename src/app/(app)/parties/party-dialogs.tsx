@@ -96,10 +96,10 @@ export function PartyDialog({ party, defaultType }: { party?: PartyLike; default
             </Field>
           </div>
           <Field label="Phone">
-            <div className="flex gap-2">
+            <div className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-2">
               <Select
                 aria-label="Country code"
-                className="w-40 shrink-0"
+                className="min-w-0"
                 value={phone.iso}
                 onChange={(e) => setPhone((p) => ({ ...p, iso: e.target.value }))}
               >
@@ -111,7 +111,7 @@ export function PartyDialog({ party, defaultType }: { party?: PartyLike; default
               </Select>
               <Input
                 aria-label="Phone number"
-                className="min-w-0 flex-1"
+                className="min-w-0"
                 placeholder="98765 43210"
                 inputMode="tel"
                 value={phone.number}

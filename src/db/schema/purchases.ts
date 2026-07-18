@@ -19,6 +19,9 @@ export const purchases = pgTable("purchases", {
   referenceNumber: text("reference_number").notNull(),
   status: text("status").notNull().default("completed"), // 'completed' | 'cancelled'
   subtotal: doublePrecision("subtotal").notNull().default(0),
+  discountType: text("discount_type").notNull().default("none"), // none | amount | percentage
+  discountValue: doublePrecision("discount_value").notNull().default(0), // the % or the flat amount entered
+  discountAmount: doublePrecision("discount_amount").notNull().default(0), // resolved currency discount
   tax: doublePrecision("tax").notNull().default(0),
   total: doublePrecision("total").notNull().default(0),
   amountPaid: doublePrecision("amount_paid").notNull().default(0),

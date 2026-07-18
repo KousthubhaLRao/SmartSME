@@ -63,8 +63,10 @@ export async function createPurchaseAction(formData: FormData): Promise<ActionRe
     const partyId = String(formData.get("partyId") ?? "") || null;
     const items = JSON.parse(String(formData.get("items") ?? "[]")) as PurchaseLineInput[];
     const amountPaid = Number(formData.get("amountPaid") ?? 0);
+    const discountType = (String(formData.get("discountType") ?? "none") as "none" | "amount" | "percentage") || "none";
+    const discountValue = Number(formData.get("discountValue") ?? 0);
     const notes = String(formData.get("notes") ?? "") || null;
-    await createPurchase(business.id, { partyId, items, amountPaid, notes, source: "form" });
+    await createPurchase(business.id, { partyId, items, amountPaid, discountType, discountValue, notes, source: "form" });
     revalidatePath("/purchases");
     revalidatePath("/dashboard");
     return {};

@@ -22,6 +22,8 @@ export function NewPurchaseDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [discountType, setDiscountType] = useState<"amount" | "percentage">("percentage");
+  const [discountValue, setDiscountValue] = useState(0);
   const [pending, start] = useTransition();
   const router = useRouter();
 
@@ -66,7 +68,20 @@ export function NewPurchaseDialog({
             priceField="purchasePrice"
             taxRate={taxRate}
             currency={currency}
+            discountType={discountType}
+            discountValue={discountValue}
           />
+          <div className="grid gap-3 md:grid-cols-2">
+            <Field label="Discount type">
+              <Select name="discountType" value={discountType} onChange={(e) => setDiscountType(e.target.value as "amount" | "percentage")}>
+                <option value="percentage">Percentage</option>
+                <option value="amount">Amount</option>
+              </Select>
+            </Field>
+            <Field label="Discount" hint={discountType === "amount" ? "Enter the discount amount." : "Enter the discount percentage."}>
+              <Input name="discountValue" type="number" min={0} step="0.01" value={discountValue || ""} onChange={(e) => setDiscountValue(Number(e.target.value) || 0)} />
+            </Field>
+          </div>
           <Field label="Amount paid" hint="Leave 0 for credit (payable).">
             <Input name="amountPaid" type="number" min={0} step="0.01" defaultValue={0} />
           </Field>

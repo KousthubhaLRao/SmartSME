@@ -156,9 +156,8 @@ export async function parseTextAction(text: string): Promise<ParseResult> {
         items,
         amount: parsed.amount ?? null,
         category: null,
-        // Discount only applies to sales; ignored downstream for purchases.
-        discountType: effectiveType === "sale" ? parsed.discountType : "none",
-        discountValue: effectiveType === "sale" ? parsed.discountValue : 0,
+        discountType: parsed.discountType,
+        discountValue: parsed.discountValue,
         note: text.trim(),
       },
     };
@@ -259,7 +258,7 @@ export async function publishDraftAction(formData: FormData): Promise<{ error?: 
 
     const items = JSON.parse(String(formData.get("items") ?? "[]")) as SaleLineInput[] | PurchaseLineInput[];
     if (type === "purchase") {
-      const pur = await createPurchase(business.id, { partyId, items, amountPaid, source });
+      const pur = await createPurchase(business.id, { partyId, items, amountPaid, discountType, discountValue, source });
       revalidatePath("/purchases");
       revalidatePath("/dashboard");
       return { ok: `Purchase ${pur.referenceNumber} created.` };
