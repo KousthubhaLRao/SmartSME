@@ -1,510 +1,451 @@
-# SmartSME — Build Guide & Setup
+# SmartSME
 
-An AI-powered, event-driven business-management platform for SMEs.
-This README is the **implementation guide** — it adapts the vision in
-[`SmartSME_Developer_Spec_v2.md`](./SmartSME_Developer_Spec_v2.md) onto a modern
-Next.js stack and tells you exactly how to run the project from scratch on any
-machine.
+An AI-assisted, event-driven business-management platform for small and medium
+businesses. Shopkeepers record sales, purchases and expenses either through
+normal forms or by **typing a plain-language note / snapping a photo of a bill** —
+the Smart Input Engine turns that into a structured business event, shows it for
+confirmation, and publishes it onto an internal event bus that updates inventory,
+party balances and alerts.
 
-> The spec describes *what* SmartSME is. This README describes *how* it's built
-> and *how* to run it. When the two disagree, this README wins for stack/infra
-> decisions (the spec's RabbitMQ + Express + Python-service design has been
-> deliberately replaced — see [Architecture](#architecture)).
-
----
-
-## Tech stack
-
-| Layer | Choice |
-|---|---|
-| Framework | **Next.js 16** (App Router) — UI, API route handlers, and server actions in one app |
-| Language | **TypeScript** |
-| Styling | **Tailwind CSS v4** with a Material-3 token layer (see [Design system](#design-system)) |
-| Database | **PostgreSQL 16** (local via Docker) |
-| ORM / migrations | **Drizzle ORM** + `drizzle-kit` |
-| Auth | **Auth.js (NextAuth v5)** — Google OAuth + optional email/password |
-| AI | **Anthropic Claude** (`claude-opus-4-8`) — powers OCR + NLP |
-| Event bus | **Postgres `events` table + worker** (replaces RabbitMQ — see below) |
-| Background worker | A Node process (`tsx`) that drains the events table |
-
-### Why not RabbitMQ / Express / a Python AI service?
-
-The spec was written for a React SPA + Express + RabbitMQ + a separate Python
-OCR/NLP service. On this stack all four collapse:
-
-- **Express BFF → Next.js** route handlers + server actions. No separate server.
-- **RabbitMQ → a Postgres `events` table.** For an SME's transaction volume this
-  gives you publish/consume, retry, dead-letter, **event replay**, and
-  failed-event tracking as plain SQL — and one fewer service to run. See
-  [Event bus](#event-bus-postgres-not-rabbitmq).
-- **Python AI service → Claude, called from Next.js.** Claude's vision does the
-  OCR of invoices/screenshots and structured outputs do the NLP intent+entity
-  extraction, in a single request. See [Business Input Engine](#business-input-engine-ai).
+Everything runs from one Next.js process. `npm install && npm run dev` is enough:
+no database server, no Docker, no API key required to start.
 
 ---
 
-## Architecture
+## Contents
 
-```text
-┌───────────────────────────────────────────────┐
-│                Next.js 16 app                  │
-│                                                │
-│  React Server/Client Components (PWA)          │
-│  Forms │ NLP input │ OCR upload │ Dashboard    │
-│                                                │
-│  Route Handlers (/app/api/*) + Server Actions  │
-└───────────────┬───────────────────────────────┘
-                │  (same DB transaction)
-                ▼
-        business write  ──►  INSERT into `events`   ◄─ outbox pattern
-                │                     │
-                ▼                     ▼
-        PostgreSQL (Drizzle)     LISTEN/NOTIFY wakes worker
-                                      │
-                                      ▼
-                            ┌──────────────────┐
-                            │  Worker process  │
-                            │  claims events   │  SELECT … FOR UPDATE
-                            │  runs workflow   │  SKIP LOCKED
-                            │  rules, retries  │
-                            └──────────────────┘
-```
-
-The **event bus is a table**, not a broker. A business action (e.g. creating a
-sale) writes the row *and* inserts its event in the **same transaction** (the
-outbox pattern) — so an event can never be lost or emitted for a change that
-didn't commit. A worker then claims and processes events.
+- [Quick start](#quick-start)
+- [Environment variables](#environment-variables)
+- [Feature tour](#feature-tour)
+- [Architecture](#architecture)
+- [Database schema](#database-schema)
+- [Event bus & workflow engine](#event-bus--workflow-engine)
+- [Smart Input Engine (NLP + OCR)](#smart-input-engine-nlp--ocr)
+- [Reports & PDF export](#reports--pdf-export)
+- [Auth](#auth)
+- [Design system](#design-system)
+- [Project layout](#project-layout)
+- [Scripts](#scripts)
+- [Deploying to Vercel](#deploying-to-vercel)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
-## Prerequisites
-
-Install these on the machine before anything else:
-
-| Tool | Version | Check |
-|---|---|---|
-| **Node.js** | 20 LTS or newer | `node -v` |
-| **npm** | comes with Node | `npm -v` |
-| **Docker Desktop** | latest | `docker --version` |
-| **Git** | latest | `git --version` |
-
-You also need:
-
-- An **Anthropic API key** — from <https://console.anthropic.com>.
-- **Google OAuth credentials** (only if you enable Google sign-in) — a Client ID
-  + Secret from the Google Cloud Console, with
-  `http://localhost:3000/api/auth/callback/google` added as an authorized
-  redirect URI.
-
----
-
-## Setup from scratch on a new computer
-
-There are two paths. **Path A** is for when the repo already exists (you've
-pushed it to Git). **Path B** bootstraps the project from absolutely nothing.
-
-### Path A — the repo already exists (clone & run)
+## Quick start
 
 ```bash
-# 1. Get the code
-git clone <your-repo-url> smartsme
-cd smartsme
-
-# 2. Install dependencies
 npm install
-
-# 3. Create your local env file and fill it in (see Environment variables)
-cp .env.example .env.local
-#   → open .env.local and paste your real values
-
-# 4. Start Postgres (Docker must be running)
-docker compose up -d
-
-# 5. Apply the database schema
-npm run db:migrate      # or: npm run db:push   (for early dev)
-
-# 6. Run the app + the event worker (two terminals)
-npm run dev             # terminal 1 → http://localhost:3000
-npm run worker          # terminal 2 → drains the events table
+npm run dev
 ```
 
-Open <http://localhost:3000>. That's it.
+Open <http://localhost:3000> and either create an account or use the seeded demo
+login:
 
-> **Windows note:** run these in **PowerShell** or **Git Bash**. `cp` works in
-> Git Bash; in PowerShell use `Copy-Item .env.example .env.local`. Docker
-> Desktop must be started (the whale icon in the tray) before `docker compose up`.
+| | |
+|---|---|
+| **Email** | `demo@smartsme.app` |
+| **Password** | `demo1234` |
 
-### Path B — bootstrap the project from zero
+On first boot the app automatically:
 
-If the folder is empty and you're creating SmartSME for the first time:
+- starts an **embedded PostgreSQL** (PGlite) in `./.pgdata` — nothing to install,
+- applies the Drizzle migrations in `./drizzle`,
+- seeds a demo business ("Kirana Fresh Traders") with products, parties, sales,
+  purchases, expenses, workflow rules and notifications,
+- starts the **event worker in-process**, draining the `events` table every second.
+
+To reset the demo data, delete `./.pgdata` and restart.
+
+### Optional: a real PostgreSQL
 
 ```bash
-# 1. Scaffold a Next.js + TypeScript + Tailwind app
-npx create-next-app@latest smartsme \
-  --typescript --tailwind --app --src-dir --eslint --import-alias "@/*"
-cd smartsme
-
-# 2. Install the rest of the stack
-npm install drizzle-orm postgres @anthropic-ai/sdk next-auth@beta zod
-npm install -D drizzle-kit tsx @types/node
-
-# 3. Add the config files below (docker-compose.yml, drizzle.config.ts,
-#    .env.example) and the package.json scripts, then follow Path A from step 3.
+docker compose up -d            # Postgres on :5432
+# add to .env:
+# DATABASE_URL="postgresql://smartsme:smartsme@localhost:5432/smartsme"
+npm run db:migrate              # apply migrations
+npm run dev                     # terminal 1
+npm run worker                  # terminal 2 (standalone worker)
 ```
+
+With `DATABASE_URL` set the app uses postgres-js and the worker can run as its
+own process. With PGlite (no `DATABASE_URL`) the worker runs inside the Next
+server, because a separate process cannot share the embedded database.
 
 ---
 
 ## Environment variables
 
-Create `.env.local` (never commit it). `.env.example` should be committed as the
-template:
+Copy `.env.example` to **`.env`** and fill in what you need. Everything is
+optional for local development.
 
 ```bash
 # ---- Database ----
-DATABASE_URL="postgresql://smartsme:smartsme@localhost:5432/smartsme"
+# Unset  -> embedded PGlite in ./.pgdata (zero setup)
+# Set    -> a real PostgreSQL server
+DATABASE_URL=""
 
-# ---- Auth.js (NextAuth v5) ----
-# Generate a secret with:  npx auth secret
-AUTH_SECRET=""
-# Optional — only if using Google sign-in
-AUTH_GOOGLE_ID=""
-AUTH_GOOGLE_SECRET=""
+# ---- Auth ----
+# Any long random string, 32+ chars. Required in production.
+AUTH_SECRET="..."
 
-# ---- Anthropic ----
+# ---- AI provider (optional; enables smarter NLP and all OCR) ----
+# Set ONE key. If several are set, the first in this order wins,
+# or force one with AI_PROVIDER=anthropic|openai|groq|google
 ANTHROPIC_API_KEY=""
-# Overridable model id; default is Opus 4.8
-ANTHROPIC_MODEL="claude-opus-4-8"
+ANTHROPIC_MODEL="claude-opus-4-8"       # override with a current model, e.g. claude-sonnet-5
+
+OPENAI_API_KEY=""
+OPENAI_BASE_URL="https://api.openai.com/v1"   # also OpenRouter, Together, Ollama…
+OPENAI_MODEL="gpt-4o-mini"
+
+GROQ_API_KEY=""
+# The code default (llama-3.3-70b-versatile) is text-only, so OCR needs a
+# vision model like the one .env.example ships:
+GROQ_MODEL="meta-llama/llama-4-scout-17b-16e-instruct"
+
+GOOGLE_API_KEY=""
+GEMINI_MODEL="gemini-2.0-flash"
 ```
 
-> **Never paste real secrets into committed files, chat, or the spec.** Keep them
-> in `.env.local` only. If you use a shared secrets store, pull them from there.
+**Without an API key** the app still runs: text input falls back to a built-in
+regex parser, and image OCR is disabled with an explanatory message.
+
+`.env` is gitignored, so these values are **not** deployed automatically — see
+[Deploying to Vercel](#deploying-to-vercel).
 
 ---
 
-## Config files
+## Feature tour
 
-### `docker-compose.yml`
+### Dashboard
+Six KPI cards (sales, purchases, expenses, inventory value, receivable, payable),
+each clicking through to its page. Revenue trend chart, a heuristic
+**business-health score** (inventory / revenue / expenses / cash flow), Recent
+Sales and Recent Purchases side by side, and a low-stock "Needs attention" panel.
 
-```yaml
-services:
-  db:
-    image: postgres:16
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: smartsme
-      POSTGRES_PASSWORD: smartsme
-      POSTGRES_DB: smartsme
-    ports:
-      - "5432:5432"
-    volumes:
-      - smartsme_pgdata:/var/lib/postgresql/data
+### Smart Input (`/input`)
+Two modes:
 
-volumes:
-  smartsme_pgdata:
-```
+- **Natural language** — type `Sold 10 rice bags to Kumar Traders` and hit Parse.
+- **Image / OCR** — upload an invoice, order slip or WhatsApp screenshot.
 
-### `drizzle.config.ts`
+Either way you land on a **confirmation screen** with the extracted party, line
+items, discount and date, all editable, before anything is written. Typed text
+and the parsed draft both survive navigating away and back (sessionStorage),
+until the draft is published.
 
-```ts
-import { defineConfig } from "drizzle-kit";
+### Sales & Purchases
+Full list with source badge (Form / AI·Text / AI·OCR) and payment status. Click
+**any row** to open a detail modal with the line items, totals and a
+click-to-edit transaction date. Inline "Record payment" and "Cancel" actions;
+cancelling reverses inventory and the party balance. Sales additionally have a
+printable invoice page at `/sales/[id]`.
 
-export default defineConfig({
-  schema: "./src/db/schema/*",
-  out: "./drizzle",
-  dialect: "postgresql",
-  dbCredentials: { url: process.env.DATABASE_URL! },
-});
-```
+Both support **discounts** (flat amount or percentage), applied to the subtotal
+before tax, with a live preview while you type and a hard block when the discount
+exceeds the sale value.
 
-### `package.json` scripts
+### Transaction dates
+Every sale and purchase carries a business `date` separate from `created_at`. It
+defaults to today, can be set when creating the record, and corrected afterwards
+from the detail modal — for entries logged late. Lists, charts, analytics and
+reports all key off this date.
 
-```json
-{
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio",
-    "worker": "tsx src/worker/index.ts"
-  }
-}
-```
+### Parties (`/parties`)
+Customers and suppliers with running balances. Each party row expands to show the
+individual unpaid invoices/bills behind its balance, with **"Pay all"** per party
+and **"Mark all as paid"** for all receivables or all payables. Phone numbers use
+a country-code dropdown (202 countries).
 
----
+### Products, Expenses, Notifications
+Inventory with stock, HSN/SKU, low-stock thresholds and stock-movement history;
+categorised expenses with their own dates; an alerts inbox fed by the workflow
+engine.
 
-## Suggested folder structure
+### Reports (`/reports`)
+- KPI cards and a **revenue chart** with a Y axis, hover tooltips showing exact
+  values, and a range selector (last week / month / 3 / 6 months / year) that
+  buckets daily, weekly or monthly as appropriate.
+- Top products, top customers, expenses by category, cash-flow summary.
+- **Downloadable reports** — see below.
 
-```text
-src/
-  app/
-    (auth)/                 # sign-in pages
-    (app)/                  # authenticated app shell (sidebar + topbar)
-      dashboard/
-      parties/
-      products/
-      sales/
-      purchases/
-      expenses/
-      input/                # the Smart Business Input Engine UI
-      settings/
-    api/
-      auth/[...nextauth]/   # Auth.js handler
-      input/parse/          # NLP + OCR → event endpoint
-    globals.css             # Tailwind v4 + M3 design tokens
-  db/
-    index.ts                # Drizzle client
-    schema/                 # one file per domain (parties, products, sales…)
-  lib/
-    ai/                     # Claude calls (ocr.ts, nlp.ts)
-    events/                 # publish() + event types
-    workflow/               # rule engine
-  worker/
-    index.ts                # event-draining loop
-```
+### Workflow (`/workflow`) and Event bus (`/events`)
+Toggle built-in rules or add your own `WHEN <event> [condition] THEN <action>`
+rule. The event bus page shows events flowing `pending → done`, with retry,
+dead-letter and replay, and auto-refreshes.
 
 ---
 
-## Database & Drizzle
+## Architecture
 
-Drizzle client (`src/db/index.ts`):
-
-```ts
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-
-const client = postgres(process.env.DATABASE_URL!);
-export const db = drizzle(client);
+```
+Browser (React 19, Server Components + Server Actions)
+   │
+   ├── Server Action ──► Domain layer (src/lib/domain/*)
+   │                        │
+   │                        ├── writes business rows          ┐ one
+   │                        └── publishes an event row        ┘ transaction
+   │                                    │
+   │                            events table (outbox)
+   │                                    │
+   │                        Worker (src/worker/loop.ts)
+   │                        claims → runs workflow rules → retries → dead-letters
+   │                                    │
+   │                        inventory · party balances · notifications
+   │
+   └── Smart Input ──► src/lib/ai (provider-agnostic NLP + OCR)
+                            │
+                       human confirmation ──► same domain layer
 ```
 
-Core entities to model as schema files (from the spec §Database Design):
-`business`, `user`, `party`, `product`, `inventory`, `sale`, `saleItem`,
-`purchase`, `purchaseItem`, `expense`, `invoice`, `workflowRule`,
-`workflowExecution`, `eventLog`, `notification`.
+**Why no RabbitMQ / Express / separate Python service?** The event bus is the
+`events` table using the **transactional outbox pattern**: the business rows and
+the event are committed together, so an event can never be lost or emitted for a
+write that rolled back. A worker claims rows in batches, retries with a counter
+and dead-letters after 5 attempts — the same guarantees a broker gives, without a
+second piece of infrastructure. AI runs in server actions rather than a Python
+service. The result is a **modular monolith with an event-driven core**: domains
+are cleanly separated and could be extracted into services if scale ever demanded
+it.
 
-Every table carries a `businessId` for multi-tenant isolation.
-
-Workflow after editing a schema file:
-
-```bash
-npm run db:generate   # writes a migration to ./drizzle
-npm run db:migrate    # applies it
-# or npm run db:push for quick, throwaway iteration in early dev
-```
+Key numbers (`src/worker/loop.ts`): `POLL_MS = 1000`, `BATCH = 20`,
+`MAX_RETRIES = 5`.
 
 ---
 
-## Event bus (Postgres, not RabbitMQ)
+## Database schema
 
-### The `events` table
+Drizzle ORM, one schema file per domain in `src/db/schema/`.
+
+| Table | Purpose |
+|---|---|
+| `businesses` | Tenant root: name, GSTIN/PAN, address, currency, `tax_rate`, `invoice_prefix` |
+| `users` | Email + PBKDF2 password hash, role, belongs to a business |
+| `parties` | Customers and suppliers, with a running `balance` |
+| `products` | Stock, unit, HSN/SKU, purchase/selling price, low-stock threshold |
+| `stock_movements` | Append-only inventory ledger (`delta`, reason, ref) |
+| `sales` / `sale_items` | Invoices: subtotal, discount (type/value/amount), tax, total, paid, status, `date` |
+| `purchases` / `purchase_items` | Supplier bills, same shape as sales |
+| `expenses` | Category, description, amount, `date`, workflow `flagged` marker |
+| `events` | The outbox: type, JSON payload, status, retry count, error |
+| `workflow_rules` / `workflow_executions` | Rule definitions and their audit trail |
+| `notifications` | Alerts surfaced in the bell menu |
+
+Positive `parties.balance` means *they owe us* (customer) or *we owe them*
+(supplier). Migrations live in `./drizzle` and are applied automatically on boot.
+
+---
+
+## Event bus & workflow engine
+
+Event types (`src/lib/events/types.ts`): `SALE_CREATED`, `PURCHASE_CREATED`,
+`STOCK_UPDATED`, `EXPENSE_ADDED`, `PAYMENT_RECEIVED`, `ORDER_CREATED`.
+
+Publishing uses the outbox pattern — `publish(tx, …)` takes the **same
+transaction** as the business write:
 
 ```ts
-// src/db/schema/events.ts
-import { pgTable, uuid, text, jsonb, integer, timestamp } from "drizzle-orm/pg-core";
-
-export const events = pgTable("events", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  businessId: uuid("business_id").notNull(),
-  type: text("type").notNull(),                 // SALE_CREATED, STOCK_UPDATED, …
-  payload: jsonb("payload").notNull(),
-  status: text("status").notNull().default("pending"), // pending|processing|done|failed|dead
-  retryCount: integer("retry_count").notNull().default(0),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  processedAt: timestamp("processed_at"),
-  error: text("error"),
-});
-```
-
-### Publishing (outbox pattern — same transaction as the business change)
-
-```ts
-// inside a server action / route handler
 await db.transaction(async (tx) => {
-  const [sale] = await tx.insert(sales).values(saleData).returning();
-  await tx.insert(events).values({
-    businessId: sale.businessId,
-    type: "SALE_CREATED",
-    payload: { saleId: sale.id },
-  });
+  const [row] = await tx.insert(s.sales).values({ … }).returning();
+  await tx.insert(s.saleItems).values(…);
+  await publish(tx, businessId, "SALE_CREATED", { saleId: row.id });
+  return row;
 });
-// optionally: NOTIFY the worker so it processes instantly
+await drainQueue();   // process now, so the UI is correct on return
 ```
 
-### The worker (`src/worker/index.ts`)
+Built-in rules seeded per business (`src/lib/workflow/defaults.ts`):
 
-Claims events safely with `FOR UPDATE SKIP LOCKED`, runs matching workflow
-rules, marks them done or retries with backoff, and dead-letters after N tries.
+| Rule | When | Then |
+|---|---|---|
+| Update inventory on sale | `SALE_CREATED` | `update_inventory` |
+| Low-stock restock alert | `STOCK_UPDATED` | `restock_alert` |
+| Flag high-value expense | `EXPENSE_ADDED` | `flag_expense` |
+| Unpaid sale reminder | `SALE_CREATED` | `notify` |
 
-```ts
-import { db } from "@/db";
-import { sql } from "drizzle-orm";
-import { runWorkflowRules } from "@/lib/workflow";
-
-const MAX_RETRIES = 5;
-
-async function tick() {
-  await db.transaction(async (tx) => {
-    const rows = await tx.execute(sql`
-      SELECT * FROM events
-      WHERE status = 'pending'
-      ORDER BY created_at
-      FOR UPDATE SKIP LOCKED
-      LIMIT 10
-    `);
-    for (const ev of rows) {
-      try {
-        await runWorkflowRules(ev);              // e.g. SALE_CREATED → update inventory
-        await tx.execute(sql`UPDATE events SET status='done', processed_at=now() WHERE id=${ev.id}`);
-      } catch (err) {
-        const next = ev.retry_count + 1;
-        const status = next >= MAX_RETRIES ? "dead" : "pending";
-        await tx.execute(sql`
-          UPDATE events SET status=${status}, retry_count=${next}, error=${String(err)} WHERE id=${ev.id}
-        `);
-      }
-    }
-  });
-}
-
-// Poll every second (add LISTEN/NOTIFY later for instant wake-ups)
-setInterval(tick, 1000);
-console.log("SmartSME event worker running…");
-```
-
-This covers the spec's RabbitMQ bullets — publish, consume, retry, dead-letter,
-event log, failed-event tracking — plus **event replay** (the rows persist; just
-reset `status` to `pending`).
+Every rule run is recorded in `workflow_executions`, visible on `/workflow`.
 
 ---
 
-## Business Input Engine (AI)
+## Smart Input Engine (NLP + OCR)
 
-The spec's OCR + NLP + Event Generator, done with Claude. Install: already have
-`@anthropic-ai/sdk` and `zod`.
+`src/lib/ai/client.ts` is a **provider-agnostic** layer: Anthropic, OpenAI (or
+any OpenAI-compatible endpoint), Groq and Google Gemini all implement one
+`complete({ system, prompt, image })` interface. `getProvider()` picks the first
+configured key in the order anthropic → openai → groq → google, unless
+`AI_PROVIDER` forces one.
 
-### NLP: plain text → structured event
+### Text (`src/lib/ai/nlp.ts`)
 
-```ts
-// src/lib/ai/nlp.ts
-import Anthropic from "@anthropic-ai/sdk";
-import { z } from "zod";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+1. One prompt asks the model for strict JSON: `eventType`, `party`, `product`,
+   `quantity`, `amount`, `category`, `allInventory`, `discountType`,
+   `discountValue`, `date`.
+2. `extractJson()` pulls the first `{…}` out of the reply and `normalize()`
+   validates every field.
+3. **If no API key is set, or the call fails**, it falls back to
+   `heuristicParse()` — a dependency-free regex parser covering the same fields.
 
-const client = new Anthropic(); // reads ANTHROPIC_API_KEY
+Understood today, among others:
 
-const BusinessEvent = z.object({
-  eventType: z.enum(["SALE_CREATED", "PURCHASE_CREATED", "EXPENSE_ADDED", "ORDER_CREATED"]),
-  party: z.string().nullable(),
-  product: z.string().nullable(),
-  quantity: z.number().nullable(),
-  amount: z.number().nullable(),
-});
+| You type | It extracts |
+|---|---|
+| `Sold 10 rice bags to Kumar Traders` | sale, qty 10, product Rice, party Kumar Traders |
+| `Purchase 50 sugar packets from ABC Suppliers` | purchase (party type corrects direction) |
+| `Paid electricity bill 3200` | expense, category Utilities |
+| `Sell everything to Anita Stores at 10% discount` | one line per in-stock product, 10% discount |
+| `Sold 4 litres cooking oil to Shree on 20th August 2026` | date `2026-08-20` |
 
-export async function parseCommand(text: string) {
-  const res = await client.messages.parse({
-    model: process.env.ANTHROPIC_MODEL ?? "claude-opus-4-8",
-    max_tokens: 1024,
-    messages: [{ role: "user", content:
-      `Extract a structured business event from this SME command:\n"${text}"` }],
-    output_config: { format: zodOutputFormat(BusinessEvent) },
-  });
-  return res.parsed_output; // { eventType, party, product, quantity, amount }
-}
-```
+Dates accept `20th August 2026`, `20 aug`, `3 sept`, `August 20 2026`,
+`20/08/2026`, `2026-08-20`, `today`, `yesterday`, `day before yesterday`. With no
+date stated it defaults to today.
 
-> Example: `"Sold 10 rice bags to Kumar Traders"` →
-> `{ eventType: "SALE_CREATED", party: "Kumar Traders", product: "Rice", quantity: 10, amount: null }`
+### Images (`src/lib/ai/ocr.ts`)
 
-### OCR: invoice / WhatsApp screenshot → structured data
+The same provider, with the image attached, returns `party`, `docType`,
+`lineItems`, `total`, `date`, `discountType`, `discountValue`. **OCR requires a
+vision-capable provider — there is no offline fallback.**
 
-Claude's **vision** reads the image directly — no separate OCR library.
+### Grounding (`src/app/(app)/input/actions.ts`)
 
-```ts
-// src/lib/ai/ocr.ts
-import Anthropic from "@anthropic-ai/sdk";
-import { z } from "zod";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+Both paths then run the same matching step:
 
-const client = new Anthropic();
+- **Party matching** — `bestMatch()` tries exact (normalised), substring, then
+  token-subset, so "Anita", "anita stores." and "ANITA STORES" all resolve.
+- **Direction correction** — a matched party's own type is authoritative, so a
+  named customer forces `sale` even if the model guessed `purchase`.
+- **Product matching** to catalogue items, falling back to a custom line.
+- **"Entire inventory"** expands to one line per in-stock product.
 
-const Invoice = z.object({
-  party: z.string().nullable(),
-  lineItems: z.array(z.object({
-    product: z.string(),
-    quantity: z.number(),
-    unitPrice: z.number().nullable(),
-  })),
-  total: z.number().nullable(),
-});
+Nothing is written until you confirm on screen.
 
-export async function parseInvoiceImage(base64: string, mediaType: "image/png" | "image/jpeg") {
-  const res = await client.messages.parse({
-    model: process.env.ANTHROPIC_MODEL ?? "claude-opus-4-8",
-    max_tokens: 2048,
-    messages: [{
-      role: "user",
-      content: [
-        { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
-        { type: "text", text: "Extract this invoice/order slip into the schema." },
-      ],
-    }],
-    output_config: { format: zodOutputFormat(Invoice) },
-  });
-  return res.parsed_output;
-}
-```
+---
 
-### Confirmation before publishing
+## Reports & PDF export
 
-The spec's **human-approval step** matters: after `parseCommand` / `parseInvoiceImage`,
-show the extracted event to the user for confirmation, and only **then** run the
-outbox insert (`SALE_CREATED`, etc.). Never auto-publish an AI-parsed event.
+`src/lib/reports.ts` builds a report for a **type** (sales, purchases, expenses,
+or everything consolidated) over a **period**: today, last 7 days, this month,
+last month, last 3 / 6 months, this year, last 12 months, or a custom range.
+
+`src/app/(app)/reports/report-download.tsx` renders it to a real **PDF**
+(jsPDF + autoTable, landscape A4) or **CSV**. The PDF has a business header,
+period, summary block, one table per section, and page numbers.
+
+Two deliberate details: cancelled documents are **listed but excluded from
+totals**, and amounts are printed as plain grouped numbers with the currency
+stated once in the header — the PDF core fonts have no `₹` glyph. jsPDF is
+dynamically imported, so it only downloads when you actually export.
+
+Invoices print in **light mode regardless of the app theme**: the print handler
+temporarily removes the `.dark` class, and the app chrome is hidden with
+`print:hidden`, so only the invoice reaches the page.
 
 ---
 
 ## Auth
 
-Auth.js (NextAuth v5) with a Drizzle adapter and database sessions.
+Self-contained email + password, no external provider:
 
-```bash
-npm install next-auth@beta @auth/drizzle-adapter
-npx auth secret   # writes AUTH_SECRET into .env.local
-```
+- **PBKDF2** hashing via Web Crypto (`src/lib/auth/password.ts`).
+- **Signed JWT session cookie** via `jose`, httpOnly, 30 days
+  (`src/lib/auth/session.ts`).
+- `requireUser()` guards every `(app)` route and returns `{ user, business }`,
+  which also scopes every query to that business.
 
-Start with **Google** provider (fastest). Add **credentials (email/password)**
-if SMEs need non-Google logins — hash passwords with `bcrypt`/`argon2`, store on
-the `user` table. Gate every route under `(app)/` behind a session check.
+`AUTH_SECRET` must be 32+ characters in production; a dev fallback is used
+locally.
 
 ---
 
 ## Design system
 
-Reuse the DeepStation Material-3 token approach: define tokens in
-`src/app/globals.css` via Tailwind v4's `@theme inline` plus CSS variables, and
-flip them under a `.dark {}` block. App shell = sidebar + topbar. Component
-patterns: cards, badges, progress, skeletons, empty states. Pick a brand palette
-that fits an SME finance tool (clean, trustworthy — avoid the generic
-purple-gradient look).
+Tailwind v4 with CSS custom properties in `src/app/globals.css`. Light is the
+default; a `.dark` class on `<html>` flips the tokens, set before paint by an
+inlined script to avoid a flash. No component library — `src/components/ui/*`
+holds small primitives (Button, Card, Table, Modal, Input, Badge), and
+`src/components/icons.tsx` is a dependency-free stroke icon set.
+
+The sidebar is resizable by dragging the handle on its edge, and collapses to an
+icon-only rail when that handle is clicked; both the width and the collapsed
+state persist.
 
 ---
 
-## Build order (phased — don't build all 20 modules at once)
+## Project layout
 
-1. **Foundation** — Next.js app, Drizzle schema, Docker Postgres, Auth, design tokens, `events` table + worker skeleton.
-2. **Business Setup + Party Management** — the tenant + customers/suppliers.
-3. **Product & Inventory** — with `STOCK_UPDATED` events + low-stock alerts.
-4. **Sales** — create sale → `SALE_CREATED` → worker updates inventory. First full event loop.
-5. **Business Input Engine** — NLP + OCR → confirmation → publish. The headline feature.
-6. **Dashboard** — KPI cards + charts off the data now flowing.
-7. **Purchase, Expense, Accounting, Reporting** — expand outward.
-8. **Workflow Engine UI, Notifications, Audit** — the cross-cutting modules.
-9. **Stretch:** AI Advisor, Forecasting.
+```
+src/
+├── app/
+│   ├── (app)/                 authenticated area (shared AppShell)
+│   │   ├── dashboard/ input/ sales/ purchases/ products/
+│   │   ├── parties/ expenses/ reports/ workflow/ events/
+│   │   ├── notifications/ settings/
+│   │   └── layout.tsx
+│   ├── (auth)/                sign-in, sign-up
+│   ├── api/worker/            manual queue drain (serverless cron)
+│   └── globals.css            design tokens + print rules
+├── components/                app shell, dialogs, ui primitives
+├── db/
+│   ├── schema/                one file per domain
+│   ├── index.ts               driver selection (PGlite or postgres-js)
+│   └── seed.ts                demo data
+├── lib/
+│   ├── ai/                    client.ts · nlp.ts · ocr.ts
+│   ├── auth/                  password, session, current-user
+│   ├── domain/                sales, purchases, payments, products, parties, expenses
+│   ├── events/                publish + types
+│   ├── workflow/              engine, defaults, labels
+│   ├── analytics.ts           dashboard/report aggregates
+│   ├── reports.ts             downloadable report builder
+│   ├── countries.ts           dial codes for the phone field
+│   └── utils.ts               money, dates, rounding
+└── worker/                    loop.ts (drain) + index.ts (standalone)
+```
 
-Get **step 4** working end-to-end before widening — one real event loop proves
-the whole architecture.
+Each route folder keeps its own `actions.ts` (server actions) next to its page.
+
+---
+
+## Scripts
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | App + in-process event worker; auto-migrates and seeds |
+| `npm run build` / `npm start` | Production build / serve |
+| `npm test` | Unit tests (`node:test` via tsx) for totals and analytics |
+| `npm run worker` | Standalone worker (real-Postgres setups only) |
+| `npm run db:generate` | Generate a migration after editing `src/db/schema/*` |
+| `npm run db:migrate` | Apply migrations |
+| `npm run db:push` | Push schema directly (throwaway dev iteration) |
+| `npm run db:studio` | Browse the database in Drizzle Studio |
+
+---
+
+## Deploying to Vercel
+
+Vercel is serverless, so two things matter.
+
+**1. Set environment variables** (Project → Settings → Environment Variables, for
+Production *and* Preview), then **redeploy** — env changes do not apply to
+existing deployments:
+
+| Name | Value |
+|---|---|
+| `DATABASE_URL` | A Neon **pooled** connection string (the `-pooler` host). Required: Vercel's filesystem is read-only, so PGlite cannot run there. |
+| `AUTH_SECRET` | A long random string (`openssl rand -hex 32`) |
+| `ANTHROPIC_API_KEY` | Optional but recommended — enables LLM parsing **and** OCR |
+| `ANTHROPIC_MODEL` | e.g. `claude-sonnet-5` |
+
+Because `.env` is gitignored it is never uploaded. If you skip the AI key,
+deployed text input silently drops to the regex fallback and OCR fails with
+"Image OCR needs an AI provider that can read images".
+
+**2. Apply migrations once:** `npm run db:migrate` against the deployed database.
+The app also attempts migrations on boot, but running it explicitly is cleanest.
+
+**Events on serverless:** a polling worker cannot run in a function, so business
+writes **drain the queue synchronously** within the request. The optional
+`/api/worker` endpoint drains stragglers — point a Vercel Cron at it and set
+`CRON_SECRET` to require `Authorization: Bearer <secret>`.
 
 ---
 
@@ -512,24 +453,21 @@ the whole architecture.
 
 | Symptom | Fix |
 |---|---|
-| `ECONNREFUSED …:5432` | Postgres isn't up. `docker compose up -d`, wait a few seconds, retry. |
-| `DATABASE_URL` undefined in `drizzle-kit` | It reads `.env` by default — ensure vars are in `.env.local` **and** loaded (Next loads `.env.local` automatically; for `drizzle-kit` add `import "dotenv/config"` or use `dotenv -e .env.local --`). |
-| Auth redirect mismatch | Add `http://localhost:3000/api/auth/callback/google` to the Google OAuth authorized redirect URIs. |
-| `ANTHROPIC_API_KEY` errors | Set it in `.env.local`; restart `npm run dev`. |
-| Events stuck at `pending` | The worker isn't running — `npm run worker` in a second terminal. |
-| Port 3000 in use | `npm run dev -- -p 3001`. |
-| Docker volume corrupted / want a clean DB | `docker compose down -v` (⚠️ deletes all local data), then `up -d` + `db:migrate`. |
+| OCR says it needs a vision provider | No API key is configured, or `GROQ_MODEL` is a text-only model. Set `ANTHROPIC_API_KEY`, or a Groq vision model. |
+| Parsing feels "dumb" (no dates/discounts) | No API key set, so the regex fallback is running. The Smart Input footer shows which engine parsed it. |
+| 500 on Vercel | Almost always a missing `DATABASE_URL` or `AUTH_SECRET`. |
+| Demo data looks wrong | Delete `./.pgdata` and restart to reseed. |
+| Schema changed but the DB did not | `npm run db:generate` then `npm run db:migrate`. |
+| Invoice prints with the dark theme | Print from the invoice page; the handler swaps to light automatically. |
 
 ---
 
-## Daily dev loop
+## Getting an Anthropic API key
 
-```bash
-docker compose up -d     # ensure Postgres is running
-npm run dev              # terminal 1
-npm run worker           # terminal 2
-npm run db:studio        # optional: browse the DB in a GUI
-```
+1. **console.anthropic.com** → Settings → **API Keys** → Create Key (shown once).
+2. Add credit under **Plans & Billing** — API usage is prepaid and billed
+   separately from a Claude Pro/Max subscription.
+3. Put `ANTHROPIC_API_KEY` and `ANTHROPIC_MODEL` in `.env` locally and in the
+   Vercel dashboard for the deployment, then restart / redeploy.
 
-Stop Postgres when done: `docker compose down` (keeps data) or
-`docker compose down -v` (wipes it).
+One key covers both NLP and OCR, since Claude reads images.
