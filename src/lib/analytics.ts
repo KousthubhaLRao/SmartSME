@@ -81,7 +81,7 @@ export async function loadOverview(businessId: string, days = 14): Promise<Overv
     buckets.push({ label: `${d.getDate()}`, value: 0, start: d.getTime() });
   }
   for (const sale of sales) {
-    const t = new Date(sale.createdAt).getTime();
+    const t = new Date(sale.date).getTime();
     const idx = buckets.findIndex((b, i) => t >= b.start && (i === buckets.length - 1 || t < buckets[i + 1].start));
     if (idx >= 0) buckets[idx].value = round2(buckets[idx].value + sale.total);
   }
@@ -127,10 +127,10 @@ export async function loadOverview(businessId: string, days = 14): Promise<Overv
 
   const cutoff = now.getTime() - days * dayMs;
   const priorCutoff = now.getTime() - 2 * days * dayMs;
-  const recentRev = sales.filter((x) => new Date(x.createdAt).getTime() >= cutoff).reduce((a, x) => a + x.total, 0);
+  const recentRev = sales.filter((x) => new Date(x.date).getTime() >= cutoff).reduce((a, x) => a + x.total, 0);
   const priorRev = sales
     .filter((x) => {
-      const t = new Date(x.createdAt).getTime();
+      const t = new Date(x.date).getTime();
       return t >= priorCutoff && t < cutoff;
     })
     .reduce((a, x) => a + x.total, 0);
@@ -184,7 +184,7 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
  */
 export async function getRevenueSeries(businessId: string, days: number): Promise<RevenuePoint[]> {
   const sales = await db
-    .select({ createdAt: s.sales.createdAt, total: s.sales.total })
+    .select({ date: s.sales.date, total: s.sales.total })
     .from(s.sales)
     .where(and(eq(s.sales.businessId, businessId), ne(s.sales.status, "cancelled")));
 
@@ -237,7 +237,7 @@ export async function getRevenueSeries(businessId: string, days: number): Promis
   }
 
   for (const sale of sales) {
-    const t = new Date(sale.createdAt).getTime();
+    const t = new Date(sale.date).getTime();
     const bk = buckets.find((bb) => t >= bb.start && t < bb.end);
     if (bk) bk.value = round2(bk.value + sale.total);
   }

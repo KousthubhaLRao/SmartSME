@@ -23,7 +23,7 @@ export default async function DashboardPage() {
     .from(sc.sales)
     .leftJoin(sc.parties, eq(sc.sales.partyId, sc.parties.id))
     .where(and(eq(sc.sales.businessId, business.id), ne(sc.sales.status, "cancelled")))
-    .orderBy(desc(sc.sales.createdAt))
+    .orderBy(desc(sc.sales.date))
     .limit(5);
 
   const recentPurchases = await db
@@ -31,7 +31,7 @@ export default async function DashboardPage() {
     .from(sc.purchases)
     .leftJoin(sc.parties, eq(sc.purchases.partyId, sc.parties.id))
     .where(and(eq(sc.purchases.businessId, business.id), ne(sc.purchases.status, "cancelled")))
-    .orderBy(desc(sc.purchases.createdAt))
+    .orderBy(desc(sc.purchases.date))
     .limit(5);
 
   return (
@@ -133,7 +133,7 @@ export default async function DashboardPage() {
                       {sale.invoiceNumber}
                     </Link>
                     <div className="text-xs text-muted-foreground">
-                      {partyName ?? "Walk-in"} · {formatDate(sale.createdAt)}
+                      {partyName ?? "Walk-in"} · {formatDate(sale.date)}
                     </div>
                   </div>
                   <div className="text-right">
@@ -169,7 +169,7 @@ export default async function DashboardPage() {
                   <div className="min-w-0 flex-1">
                     <div className="font-medium">{purchase.referenceNumber}</div>
                     <div className="text-xs text-muted-foreground">
-                      {partyName ?? "Supplier"} · {formatDate(purchase.createdAt)}
+                      {partyName ?? "Supplier"} · {formatDate(purchase.date)}
                     </div>
                   </div>
                   <div className="text-right">

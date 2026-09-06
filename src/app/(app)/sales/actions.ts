@@ -5,9 +5,9 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as sc from "@/db/schema";
 import { requireUser } from "@/lib/auth/current-user";
-import { createSale, cancelSale, type SaleLineInput } from "@/lib/domain/sales";
+import { createSale, cancelSale, updateSaleDate, type SaleLineInput } from "@/lib/domain/sales";
 import { recordPayment } from "@/lib/domain/payments";
-import { errMsg } from "@/lib/utils";
+import { errMsg, parseDateInput } from "@/lib/utils";
 
 export interface ActionResult {
   error?: string;
@@ -63,7 +63,8 @@ export async function createSaleAction(formData: FormData): Promise<ActionResult
     const discountType = (String(formData.get("discountType") ?? "none") as "none" | "amount" | "percentage") || "none";
     const discountValue = Number(formData.get("discountValue") ?? 0);
     const notes = String(formData.get("notes") ?? "") || null;
-    await createSale(business.id, { partyId, items, amountPaid, discountType, discountValue, notes, source: "form" });
+    const date = parseDateInput(formData.get("date"));
+    await createSale(business.id, { partyId, items, amountPaid, discountType, discountValue, notes, date, source: "form" });
     revalidatePath("/sales");
     revalidatePath("/dashboard");
     return {};
@@ -92,6 +93,22 @@ export async function cancelSaleAction(saleId: string): Promise<ActionResult> {
     await cancelSale(business.id, saleId);
     revalidatePath("/sales");
     revalidatePath("/dashboard");
+    return {};
+  } catch (e) {
+    return { error: errMsg(e) };
+  }
+}
+
+/** Back-dates an existing sale (e.g. a sale that was logged late). */
+export async function updateSaleDateAction(saleId: string, dateStr: string): Promise<ActionResult> {
+  const { business } = await requireUser();
+  try {
+    const date = parseDateInput(dateStr);
+    if (!date) return { error: "Pick a valid date." };
+    await updateSaleDate(business.id, saleId, date);
+    revalidatePath("/sales");
+    revalidatePath("/dashboard");
+    revalidatePath("/reports");
     return {};
   } catch (e) {
     return { error: errMsg(e) };

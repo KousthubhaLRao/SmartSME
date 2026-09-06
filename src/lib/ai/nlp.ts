@@ -13,6 +13,8 @@ export interface ParsedCommand {
   discountType: "none" | "amount" | "percentage";
   /** The percent (for "percentage") or the flat currency figure (for "amount"). */
   discountValue: number;
+  /** Transaction date as YYYY-MM-DD when the note states one, else null. */
+  date: string | null;
   /** The provider label that parsed it (e.g. "Anthropic Claude"), or "Heuristic". */
   engine: string;
 }
@@ -20,7 +22,7 @@ export interface ParsedCommand {
 const SYSTEM =
   "You extract a single structured business event from an SME shopkeeper's plain-language note. Reply with JSON only, no prose or markdown.";
 
-const PROMPT = (text: string) =>
+const PROMPT = (text: string, todayIso: string) =>
   `Extract one business event from the note and return ONLY a single minified JSON object with exactly these keys:
 - eventType: one of "SALE_CREATED" (sold/sale), "PURCHASE_CREATED" (bought/purchased from a supplier), "ORDER_CREATED" (a customer wants/needs something later), "EXPENSE_ADDED" (rent, salary, utilities, fuel, etc.).
 - party: the customer or supplier name, or null.
@@ -30,6 +32,7 @@ const PROMPT = (text: string) =>
 - category: expense category (e.g. Rent, Utilities) for EXPENSE_ADDED, else null.
 - allInventory: true if the note refers to the ENTIRE inventory / all stock / everything in stock (e.g. "sell the entire inventory", "clear out all stock", "sell everything"); otherwise false. When true, leave product and quantity as null.
 - discountType: "percentage" if a percentage discount is mentioned (e.g. "10% off", "discount of 10%"), "amount" if a flat money discount is mentioned (e.g. "discount of 300 rupees", "₹300 off"), otherwise "none".
+- date: the date the transaction happened, as "YYYY-MM-DD", if the note states one (e.g. "on 20th August 2026", "yesterday", "3 Sept"); otherwise null. Today is ${todayIso} - resolve relative words like "today"/"yesterday" against it, and assume a bare day+month is the most recent past occurrence.
 - discountValue: the numeric discount — the percent number for "percentage", or the rupee figure for "amount"; 0 when discountType is "none".
 Use null where a value is unknown. No extra keys, no commentary.
 
@@ -39,7 +42,7 @@ export async function parseCommand(text: string): Promise<ParsedCommand> {
   const provider = getProvider();
   if (provider) {
     try {
-      const raw = await provider.complete({ system: SYSTEM, prompt: PROMPT(text), maxTokens: 1024 });
+      const raw = await provider.complete({ system: SYSTEM, prompt: PROMPT(text, isoDate(new Date())), maxTokens: 1024 });
       const parsed = extractJson<Omit<ParsedCommand, "engine">>(raw);
       if (parsed && parsed.eventType) {
         return { ...normalize(parsed), engine: provider.label };
@@ -63,7 +66,82 @@ function normalize(p: Partial<ParsedCommand>): Omit<ParsedCommand, "engine"> {
     discountType:
       p.discountType === "amount" || p.discountType === "percentage" ? p.discountType : "none",
     discountValue: p.discountValue != null && Number(p.discountValue) > 0 ? Number(p.discountValue) : 0,
+    date: typeof p.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(p.date) ? p.date : null,
   };
+}
+
+const MONTH_INDEX: Record<string, number> = {
+  jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+  jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+};
+
+function isoDate(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+function shift(base: Date, days: number): Date {
+  return new Date(base.getFullYear(), base.getMonth(), base.getDate() + days);
+}
+
+/** Picks the year for a bare day+month: the most recent one that is not future. */
+function inferYear(month: number, day: number, today: Date): number {
+  const y = today.getFullYear();
+  return new Date(y, month, day) > today ? y - 1 : y;
+}
+
+function build(y: number, m: number, d: number): string | null {
+  const dt = new Date(y, m, d);
+  // Rejects impossible dates like 31 Feb, which JS would silently roll over.
+  return dt.getMonth() === m && dt.getDate() === d ? isoDate(dt) : null;
+}
+
+/**
+ * Pulls a transaction date out of a note ("on 20th August 2026", "yesterday",
+ * "20/08/2026"). Returns YYYY-MM-DD, or null when the note states no date.
+ */
+export function parseDatePhrase(text: string, now = new Date()): string | null {
+  const lower = text.toLowerCase();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  if (/\bday before yesterday\b/.test(lower)) return isoDate(shift(today, -2));
+  if (/\byesterday\b/.test(lower)) return isoDate(shift(today, -1));
+  if (/\btomorrow\b/.test(lower)) return isoDate(shift(today, 1));
+  if (/\btoday\b/.test(lower)) return isoDate(today);
+
+  // 2026-08-20
+  let m = lower.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
+  if (m) return build(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+
+  // 20/08/2026 or 20-08-26 (day first, the Indian convention)
+  m = lower.match(/\b(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})\b/);
+  if (m) {
+    const yr = Number(m[3]);
+    return build(yr < 100 ? 2000 + yr : yr, Number(m[2]) - 1, Number(m[1]));
+  }
+
+  // "20th August 2026", "3 sept", "on 20 aug"
+  m = lower.match(
+    /\b(\d{1,2})(?:st|nd|rd|th)?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?(?:,?\s*(\d{4}))?\b/,
+  );
+  if (m) {
+    const day = Number(m[1]);
+    const mon = MONTH_INDEX[m[2]];
+    return build(m[3] ? Number(m[3]) : inferYear(mon, day, today), mon, day);
+  }
+
+  // "August 20 2026" / "on aug 20" — needs "on" or a year, so a stray "may 10
+  // bags" is not read as a date.
+  m = lower.match(
+    /\b(on\s+)?(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\b/,
+  );
+  if (m && (m[1] || m[4])) {
+    const mon = MONTH_INDEX[m[2]];
+    const day = Number(m[3]);
+    return build(m[4] ? Number(m[4]) : inferYear(mon, day, today), mon, day);
+  }
+
+  return null;
 }
 
 /** Pulls a "discount of 10%" / "discount of 300 rupees" clause out of a note. */
@@ -96,6 +174,7 @@ export function heuristicParse(text: string): Omit<ParsedCommand, "engine"> {
     /\b(sell|clear|sold|liquidat\w*)\s+everything\b/.test(lower);
 
   const { discountType, discountValue } = parseDiscount(lower);
+  const date = parseDatePhrase(text);
 
   let eventType: ParsedCommand["eventType"] = "SALE_CREATED";
   if (/\b(bought|buy|purchase[ds]?|received|restock(?:ed)?)\b/.test(lower) && /\bfrom\b/.test(lower)) {
@@ -144,6 +223,7 @@ export function heuristicParse(text: string): Omit<ParsedCommand, "engine"> {
       allInventory: false,
       discountType: "none",
       discountValue: 0,
+      date,
     };
   }
 
@@ -165,6 +245,7 @@ export function heuristicParse(text: string): Omit<ParsedCommand, "engine"> {
     allInventory,
     discountType,
     discountValue,
+    date,
   };
 }
 

@@ -1,11 +1,12 @@
 import { requireUser } from "@/lib/auth/current-user";
 import { loadOverview, getRevenueSeries } from "@/lib/analytics";
 import { PageHeader, StatCard, SectionCard } from "@/components/ui/misc";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { BarList } from "@/components/ui/bar-list";
 import { Icon } from "@/components/icons";
 import { money } from "@/lib/utils";
 import { RevenueChart } from "./revenue-chart";
+import { ReportDownload } from "./report-download";
 
 const DEFAULT_RANGE_DAYS = 30;
 
@@ -33,6 +34,18 @@ export default async function ReportsPage() {
           tone={o.totals.grossProfit >= 0 ? "primary" : "destructive"}
         />
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Download a report</CardTitle>
+          <CardDescription>
+            Export sales, purchases, expenses, or everything together for any period.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ReportDownload />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

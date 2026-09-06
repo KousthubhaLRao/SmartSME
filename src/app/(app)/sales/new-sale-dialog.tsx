@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { LineItemsEditor, type EditorProduct } from "@/components/line-items-editor";
 import { Icon } from "@/components/icons";
+import { toDateInputValue } from "@/lib/utils";
 import { createSaleAction } from "./actions";
 
 export function NewSaleDialog({
@@ -21,6 +22,7 @@ export function NewSaleDialog({
   taxRate: number;
 }) {
   const [open, setOpen] = useState(false);
+  const today = toDateInputValue(new Date());
   const [error, setError] = useState<string | null>(null);
   const [discountType, setDiscountType] = useState<"none" | "amount" | "percentage">("none");
   const [discountValue, setDiscountValue] = useState(0);
@@ -94,6 +96,9 @@ export function NewSaleDialog({
               />
             </Field>
           </div>
+          <Field label="Date" hint="Defaults to today. Back-date it if the sale happened earlier.">
+            <Input name="date" type="date" defaultValue={today} />
+          </Field>
           <Field label="Amount paid" hint="Leave 0 for a credit sale (unpaid).">
             <Input name="amountPaid" type="number" min={0} step="0.01" defaultValue={0} />
           </Field>

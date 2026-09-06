@@ -21,6 +21,8 @@ export interface CreatePurchaseInput {
   discountType?: "none" | "amount" | "percentage";
   discountValue?: number;
   notes?: string | null;
+  /** Business date of the transaction; defaults to now. */
+  date?: Date;
   source?: string;
 }
 
@@ -90,6 +92,7 @@ export async function createPurchase(businessId: string, input: CreatePurchaseIn
         paymentStatus,
         source: input.source || "form",
         notes: input.notes || null,
+        date: input.date ?? new Date(),
       })
       .returning();
 
@@ -150,4 +153,15 @@ export async function cancelPurchase(businessId: string, purchaseId: string): Pr
     }
     await tx.update(s.purchases).set({ status: "cancelled" }).where(eq(s.purchases.id, purchaseId));
   });
+}
+
+/** Back-dates (or corrects) the business date of a Purchase. */
+export async function updatePurchaseDate(businessId: string, purchaseId: string, date: Date): Promise<void> {
+  if (Number.isNaN(date.getTime())) throw new Error("That date isn't valid.");
+  const [row] = await db
+    .select({ id: s.purchases.id })
+    .from(s.purchases)
+    .where(and(eq(s.purchases.id, purchaseId), eq(s.purchases.businessId, businessId)));
+  if (!row) throw new Error("Purchase not found.");
+  await db.update(s.purchases).set({ date }).where(eq(s.purchases.id, purchaseId));
 }

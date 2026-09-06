@@ -74,3 +74,22 @@ export function initials(name: string): string {
     .map((p) => p[0]?.toUpperCase() ?? "")
     .join("");
 }
+
+/**
+ * Parses a `yyyy-mm-dd` (or ISO) form value into a Date; undefined when blank
+ * or unparseable. A bare `yyyy-mm-dd` would parse as UTC midnight, which can
+ * land on the previous calendar day locally — so we anchor it to local noon.
+ */
+export function parseDateInput(value: unknown): Date | undefined {
+  const raw = String(value ?? "").trim();
+  if (!raw) return undefined;
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T12:00:00`) : new Date(raw);
+  return Number.isNaN(d.getTime()) ? undefined : d;
+}
+
+/** Formats a Date as `yyyy-mm-dd` for an <input type="date"> value. */
+export function toDateInputValue(d: Date | string | number): string {
+  const date = new Date(d);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}`;
+}

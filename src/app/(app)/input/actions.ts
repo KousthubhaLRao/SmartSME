@@ -11,7 +11,7 @@ import { createSale, type SaleLineInput } from "@/lib/domain/sales";
 import { createPurchase, type PurchaseLineInput } from "@/lib/domain/purchases";
 import { createExpense } from "@/lib/domain/expenses";
 import { aiStatus } from "@/lib/ai/client";
-import { round2 } from "@/lib/utils";
+import { parseDateInput, round2 } from "@/lib/utils";
 
 export interface DraftItem {
   productId: string | null;
@@ -30,6 +30,8 @@ export interface Draft {
   category: string | null;
   discountType: "none" | "amount" | "percentage";
   discountValue: number;
+  /** Parsed transaction date (YYYY-MM-DD), or null to mean today. */
+  date: string | null;
   note: string;
 }
 
@@ -93,6 +95,7 @@ export async function parseTextAction(text: string): Promise<ParseResult> {
           category: parsed.category ?? "General",
           discountType: "none",
           discountValue: 0,
+          date: parsed.date,
           note: text.trim(),
         },
       };
@@ -158,6 +161,7 @@ export async function parseTextAction(text: string): Promise<ParseResult> {
         category: null,
         discountType: parsed.discountType,
         discountValue: parsed.discountValue,
+        date: parsed.date,
         note: text.trim(),
       },
     };
@@ -224,8 +228,9 @@ export async function parseImageAction(dataUrl: string): Promise<ParseResult> {
         items: items.length ? items : [{ productId: null, description: "Item", quantity: 1, unitPrice: 0 }],
         amount: invoice.total ?? null,
         category: null,
-        discountType: "none",
-        discountValue: 0,
+        discountType: effectiveType === "sale" ? invoice.discountType : "none",
+        discountValue: effectiveType === "sale" ? invoice.discountValue : 0,
+        date: invoice.date,
         note: "Extracted from image",
       },
     };
@@ -243,9 +248,11 @@ export async function publishDraftAction(formData: FormData): Promise<{ error?: 
     const amountPaid = Number(formData.get("amountPaid") ?? 0);
     const discountType = (String(formData.get("discountType") ?? "none") as "none" | "amount" | "percentage") || "none";
     const discountValue = Number(formData.get("discountValue") ?? 0);
+    const date = parseDateInput(formData.get("date"));
 
     if (type === "expense") {
       await createExpense(business.id, {
+        date,
         category: String(formData.get("category") ?? "General"),
         description: String(formData.get("description") ?? ""),
         amount: Number(formData.get("amount") ?? 0),
@@ -258,12 +265,12 @@ export async function publishDraftAction(formData: FormData): Promise<{ error?: 
 
     const items = JSON.parse(String(formData.get("items") ?? "[]")) as SaleLineInput[] | PurchaseLineInput[];
     if (type === "purchase") {
-      const pur = await createPurchase(business.id, { partyId, items, amountPaid, discountType, discountValue, source });
+      const pur = await createPurchase(business.id, { partyId, items, amountPaid, discountType, discountValue, date, source });
       revalidatePath("/purchases");
       revalidatePath("/dashboard");
       return { ok: `Purchase ${pur.referenceNumber} created.` };
     }
-    const sale = await createSale(business.id, { partyId, items, amountPaid, discountType, discountValue, source });
+    const sale = await createSale(business.id, { partyId, items, amountPaid, discountType, discountValue, date, source });
     revalidatePath("/sales");
     revalidatePath("/dashboard");
     return { ok: `Sale ${sale.invoiceNumber} created.` };

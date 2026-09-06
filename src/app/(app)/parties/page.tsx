@@ -36,26 +36,26 @@ export default async function PartiesPage({
       id: sc.sales.id,
       partyId: sc.sales.partyId,
       ref: sc.sales.invoiceNumber,
-      date: sc.sales.createdAt,
+      date: sc.sales.date,
       total: sc.sales.total,
       amountPaid: sc.sales.amountPaid,
     })
     .from(sc.sales)
     .where(and(eq(sc.sales.businessId, business.id), ne(sc.sales.status, "cancelled")))
-    .orderBy(desc(sc.sales.createdAt));
+    .orderBy(desc(sc.sales.date));
 
   const openPurchases = await db
     .select({
       id: sc.purchases.id,
       partyId: sc.purchases.partyId,
       ref: sc.purchases.referenceNumber,
-      date: sc.purchases.createdAt,
+      date: sc.purchases.date,
       total: sc.purchases.total,
       amountPaid: sc.purchases.amountPaid,
     })
     .from(sc.purchases)
     .where(and(eq(sc.purchases.businessId, business.id), ne(sc.purchases.status, "cancelled")))
-    .orderBy(desc(sc.purchases.createdAt));
+    .orderBy(desc(sc.purchases.date));
 
   const outstandingByParty = new Map<string, OutstandingDoc[]>();
   const pushDoc = (r: { id: string; partyId: string | null; ref: string; date: Date; total: number; amountPaid: number }) => {

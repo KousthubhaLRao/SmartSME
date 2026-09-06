@@ -10,13 +10,14 @@ import { Icon } from "@/components/icons";
 import { RecordPaymentButton } from "@/components/record-payment-button";
 import { ConfirmButton } from "@/components/confirm-button";
 import { Skeleton } from "@/components/ui/misc";
+import { EditDateButton } from "@/components/edit-date-button";
 import { money, formatDate, round2 } from "@/lib/utils";
-import { recordSalePaymentAction, cancelSaleAction, loadSaleDetailAction, type SaleDetail } from "./actions";
+import { recordSalePaymentAction, cancelSaleAction, loadSaleDetailAction, updateSaleDateAction, type SaleDetail } from "./actions";
 
 export interface SaleListRow {
   id: string;
   invoiceNumber: string;
-  createdAt: Date;
+  date: Date;
   partyName: string | null;
   source: string;
   status: string;
@@ -76,7 +77,7 @@ export function SalesTable({ rows, currency }: { rows: SaleListRow[]; currency: 
               >
                 <TD>
                   <div className="font-medium">{sale.invoiceNumber}</div>
-                  <div className="text-xs text-muted-foreground">{formatDate(sale.createdAt)}</div>
+                  <div className="text-xs text-muted-foreground">{formatDate(sale.date)}</div>
                 </TD>
                 <TD>{sale.partyName ?? <span className="text-muted-foreground">Walk-in</span>}</TD>
                 <TD>
@@ -164,7 +165,7 @@ function SaleDetailView({
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-sm text-muted-foreground">{formatDate(sale.createdAt)}</div>
+        <EditDateButton action={updateSaleDateAction} id={sale.id} date={sale.date} label="Change sale date" />
         <div className="flex items-center gap-2">
           <SourceBadge source={sale.source} />
           {cancelled ? <Badge tone="outline">Cancelled</Badge> : <PaymentBadge status={sale.paymentStatus} />}

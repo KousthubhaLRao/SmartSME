@@ -5,9 +5,9 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as sc from "@/db/schema";
 import { requireUser } from "@/lib/auth/current-user";
-import { createPurchase, cancelPurchase, type PurchaseLineInput } from "@/lib/domain/purchases";
+import { createPurchase, cancelPurchase, updatePurchaseDate, type PurchaseLineInput } from "@/lib/domain/purchases";
 import { recordPayment } from "@/lib/domain/payments";
-import { errMsg } from "@/lib/utils";
+import { errMsg, parseDateInput } from "@/lib/utils";
 
 export interface ActionResult {
   error?: string;
@@ -66,7 +66,8 @@ export async function createPurchaseAction(formData: FormData): Promise<ActionRe
     const discountType = (String(formData.get("discountType") ?? "none") as "none" | "amount" | "percentage") || "none";
     const discountValue = Number(formData.get("discountValue") ?? 0);
     const notes = String(formData.get("notes") ?? "") || null;
-    await createPurchase(business.id, { partyId, items, amountPaid, discountType, discountValue, notes, source: "form" });
+    const date = parseDateInput(formData.get("date"));
+    await createPurchase(business.id, { partyId, items, amountPaid, discountType, discountValue, notes, date, source: "form" });
     revalidatePath("/purchases");
     revalidatePath("/dashboard");
     return {};
@@ -95,6 +96,22 @@ export async function cancelPurchaseAction(purchaseId: string): Promise<ActionRe
     await cancelPurchase(business.id, purchaseId);
     revalidatePath("/purchases");
     revalidatePath("/dashboard");
+    return {};
+  } catch (e) {
+    return { error: errMsg(e) };
+  }
+}
+
+/** Back-dates an existing purchase (e.g. a bill that was logged late). */
+export async function updatePurchaseDateAction(purchaseId: string, dateStr: string): Promise<ActionResult> {
+  const { business } = await requireUser();
+  try {
+    const date = parseDateInput(dateStr);
+    if (!date) return { error: "Pick a valid date." };
+    await updatePurchaseDate(business.id, purchaseId, date);
+    revalidatePath("/purchases");
+    revalidatePath("/dashboard");
+    revalidatePath("/reports");
     return {};
   } catch (e) {
     return { error: errMsg(e) };

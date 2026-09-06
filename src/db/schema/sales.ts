@@ -28,6 +28,8 @@ export const sales = pgTable("sales", {
   paymentStatus: text("payment_status").notNull().default("unpaid"), // paid | partial | unpaid
   source: text("source").notNull().default("form"), // form | nlp | ocr
   notes: text("notes"),
+  // Business date of the transaction (back-datable). createdAt stays the record time.
+  date: timestamp("date").notNull().defaultNow(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

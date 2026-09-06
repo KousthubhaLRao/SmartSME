@@ -77,7 +77,7 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
           <div className="text-right">
             <div className="text-lg font-semibold">Invoice</div>
             <div className="text-sm text-muted-foreground">{sale.invoiceNumber}</div>
-            <div className="mt-1 text-sm text-muted-foreground">{formatDate(sale.createdAt)}</div>
+            <div className="mt-1 text-sm text-muted-foreground">{formatDate(sale.date)}</div>
             <div className="mt-2 flex items-center justify-end gap-2">
               <SourceBadge source={sale.source} />
               {cancelled ? <Badge tone="outline">Cancelled</Badge> : <PaymentBadge status={sale.paymentStatus} />}

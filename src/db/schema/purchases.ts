@@ -28,6 +28,8 @@ export const purchases = pgTable("purchases", {
   paymentStatus: text("payment_status").notNull().default("unpaid"),
   source: text("source").notNull().default("form"),
   notes: text("notes"),
+  // Business date of the transaction (back-datable). createdAt stays the record time.
+  date: timestamp("date").notNull().defaultNow(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

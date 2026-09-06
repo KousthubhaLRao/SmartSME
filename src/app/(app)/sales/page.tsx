@@ -18,7 +18,7 @@ export default async function SalesPage() {
     .from(sc.sales)
     .leftJoin(sc.parties, eq(sc.sales.partyId, sc.parties.id))
     .where(eq(sc.sales.businessId, business.id))
-    .orderBy(desc(sc.sales.createdAt));
+    .orderBy(desc(sc.sales.date));
 
   const products = await db
     .select({
@@ -45,7 +45,7 @@ export default async function SalesPage() {
   const tableRows: SaleListRow[] = rows.map(({ sale, partyName }) => ({
     id: sale.id,
     invoiceNumber: sale.invoiceNumber,
-    createdAt: sale.createdAt,
+    date: sale.date,
     partyName: partyName ?? null,
     source: sale.source,
     status: sale.status,

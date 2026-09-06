@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { Icon } from "@/components/icons";
 import { LineItemsEditor, type EditorProduct } from "@/components/line-items-editor";
-import { cn } from "@/lib/utils";
+import { cn, toDateInputValue } from "@/lib/utils";
 import { parseTextAction, parseImageAction, publishDraftAction, type Draft } from "./actions";
 
 interface Party {
@@ -322,6 +322,7 @@ function DraftConfirm({
       : "",
   );
   const [items, setItems] = useState<Draft["items"]>(draft.items);
+  const [date, setDate] = useState<string>(draft.date ?? toDateInputValue(new Date()));
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -345,10 +346,11 @@ function DraftConfirm({
       items,
       discountType: type === "expense" ? "none" : discountType,
       discountValue: type === "expense" ? 0 : discountValue,
+      date,
     });
     // onPersist/draft are stable; only re-persist when the working values change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [type, partyId, items, discountType, discountValue]);
+  }, [type, partyId, items, discountType, discountValue, date]);
 
   function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -399,6 +401,17 @@ function DraftConfirm({
             <option value="purchase">Purchase</option>
             <option value="expense">Expense</option>
           </Select>
+        </Field>
+
+        <Field
+          label="Date"
+          hint={
+            draft.date
+              ? "Picked up from your note. Change it if that is wrong."
+              : "Defaults to today. Back-date it if this happened earlier."
+          }
+        >
+          <Input name="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </Field>
 
         {type === "expense" ? (

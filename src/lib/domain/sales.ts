@@ -21,6 +21,8 @@ export interface CreateSaleInput {
   discountType?: "none" | "amount" | "percentage";
   discountValue?: number;
   notes?: string | null;
+  /** Business date of the transaction; defaults to now. */
+  date?: Date;
   source?: string;
 }
 
@@ -124,6 +126,7 @@ export async function createSale(businessId: string, input: CreateSaleInput) {
         paymentStatus,
         source: input.source || "form",
         notes: input.notes || null,
+        date: input.date ?? new Date(),
       })
       .returning();
 
@@ -187,4 +190,15 @@ export async function cancelSale(businessId: string, saleId: string): Promise<vo
     }
     await tx.update(s.sales).set({ status: "cancelled" }).where(eq(s.sales.id, saleId));
   });
+}
+
+/** Back-dates (or corrects) the business date of a Sale. */
+export async function updateSaleDate(businessId: string, saleId: string, date: Date): Promise<void> {
+  if (Number.isNaN(date.getTime())) throw new Error("That date isn't valid.");
+  const [row] = await db
+    .select({ id: s.sales.id })
+    .from(s.sales)
+    .where(and(eq(s.sales.id, saleId), eq(s.sales.businessId, businessId)));
+  if (!row) throw new Error("Sale not found.");
+  await db.update(s.sales).set({ date }).where(eq(s.sales.id, saleId));
 }

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { LineItemsEditor, type EditorProduct } from "@/components/line-items-editor";
 import { Icon } from "@/components/icons";
+import { toDateInputValue } from "@/lib/utils";
 import { createPurchaseAction } from "./actions";
 
 export function NewPurchaseDialog({
@@ -21,6 +22,7 @@ export function NewPurchaseDialog({
   taxRate: number;
 }) {
   const [open, setOpen] = useState(false);
+  const today = toDateInputValue(new Date());
   const [error, setError] = useState<string | null>(null);
   const [discountType, setDiscountType] = useState<"amount" | "percentage">("percentage");
   const [discountValue, setDiscountValue] = useState(0);
@@ -82,6 +84,9 @@ export function NewPurchaseDialog({
               <Input name="discountValue" type="number" min={0} step="0.01" value={discountValue || ""} onChange={(e) => setDiscountValue(Number(e.target.value) || 0)} />
             </Field>
           </div>
+          <Field label="Date" hint="Defaults to today. Back-date it if the bill happened earlier.">
+            <Input name="date" type="date" defaultValue={today} />
+          </Field>
           <Field label="Amount paid" hint="Leave 0 for credit (payable).">
             <Input name="amountPaid" type="number" min={0} step="0.01" defaultValue={0} />
           </Field>

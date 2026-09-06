@@ -9,18 +9,20 @@ import { Icon } from "@/components/icons";
 import { RecordPaymentButton } from "@/components/record-payment-button";
 import { ConfirmButton } from "@/components/confirm-button";
 import { Skeleton } from "@/components/ui/misc";
+import { EditDateButton } from "@/components/edit-date-button";
 import { money, formatDate, round2 } from "@/lib/utils";
 import {
   recordPurchasePaymentAction,
   cancelPurchaseAction,
   loadPurchaseDetailAction,
+  updatePurchaseDateAction,
   type PurchaseDetail,
 } from "./actions";
 
 export interface PurchaseListRow {
   id: string;
   referenceNumber: string;
-  createdAt: Date;
+  date: Date;
   partyName: string | null;
   source: string;
   status: string;
@@ -80,7 +82,7 @@ export function PurchasesTable({ rows, currency }: { rows: PurchaseListRow[]; cu
               >
                 <TD>
                   <div className="font-medium">{purchase.referenceNumber}</div>
-                  <div className="text-xs text-muted-foreground">{formatDate(purchase.createdAt)}</div>
+                  <div className="text-xs text-muted-foreground">{formatDate(purchase.date)}</div>
                 </TD>
                 <TD>{purchase.partyName ?? <span className="text-muted-foreground">-</span>}</TD>
                 <TD>
@@ -161,7 +163,7 @@ function PurchaseDetailView({ detail, currency }: { detail: PurchaseDetail; curr
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-sm text-muted-foreground">{formatDate(purchase.createdAt)}</div>
+        <EditDateButton action={updatePurchaseDateAction} id={purchase.id} date={purchase.date} label="Change bill date" />
         <div className="flex items-center gap-2">
           <SourceBadge source={purchase.source} />
           {cancelled ? <Badge tone="outline">Cancelled</Badge> : <PaymentBadge status={purchase.paymentStatus} />}
