@@ -559,31 +559,38 @@ Browser ──► Vercel (frontend/dist, static)
 
 ### 1. Database — Neon
 
-Create a project at <https://console.neon.tech>, then copy **two** connection
-strings from *Connection Details*:
-
-| | host | used for |
-|---|---|---|
-| **Pooled** | contains `-pooler` | the running API (`DATABASE_URL`) |
-| **Direct** | no `-pooler` | running `alembic upgrade head` |
-
-Convert the URI to the driver this project uses — Neon hands you
-`postgresql://…`, SQLAlchemy needs `postgresql+psycopg://…`, and `sslmode` is
-required:
+This repo is linked to a Neon project via the Neon CLI. [`neon.ts`](neon.ts)
+declares the policy; `.neon` (git-ignored) records the link.
 
 ```bash
-DATABASE_URL="postgresql+psycopg://USER:PASSWORD@ep-xxx-pooler.REGION.aws.neon.tech/neondb?sslmode=require"
+npm i -g neon@latest && neon login
+neon link --project-id <your-project-id> --branch production -y
+neon deploy          # applies neon.ts to the branch
 ```
 
-Apply the schema once, against the **direct** endpoint:
+`neon link` and `neon deploy` write the live credentials into `.env.local`
+(git-ignored): `DATABASE_URL` (pooled), `DATABASE_URL_UNPOOLED` (direct),
+`NEON_BRANCH`, and the Neon Auth URLs.
+
+> **Convert the scheme before handing the URL to this backend.** Neon emits
+> `postgresql://…`; SQLAlchemy here uses psycopg 3, so it needs
+> `postgresql+psycopg://…`. Passing Neon's string unchanged fails with
+> `ModuleNotFoundError: No module named 'psycopg2'`.
+>
+> ```
+> postgresql://…        →  postgresql+psycopg://…
+> ```
+
+Use the **pooled** URL for the running API and the **unpooled** one for
+migrations. Apply the schema once:
 
 ```bash
 cd backend
-DATABASE_URL="postgresql+psycopg://…ep-xxx.REGION…/neondb?sslmode=require" alembic upgrade head
+DATABASE_URL="postgresql+psycopg://…<unpooled host>…/neondb?sslmode=require" alembic upgrade head
 ```
 
-Verify: `SELECT version_num FROM alembic_version;` should return `0001_initial_schema`,
-and `information_schema.tables` should list the 14 business tables.
+Verify: `SELECT version_num FROM alembic_version;` returns `0001_initial_schema`,
+and `information_schema.tables` lists the 14 business tables.
 
 ### 2. Backend — Render, Railway or Fly
 
