@@ -1,53 +1,30 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# ---- Python / backend ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+# ---- Node / frontend ----
+node_modules/
+dist/
+.vite/
 
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# local data (embedded PGlite database)
-/.pgdata
-/.data
-
-# env files — never commit secrets (DATABASE_URL, AUTH_SECRET, ANTHROPIC_API_KEY)
+# ---- Environment: never commit secrets ----
+# (DATABASE_URL, AUTH_SECRET, ANTHROPIC_API_KEY, ...)
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
 
-# debug logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# editors / OS
+# ---- Editors / OS ----
 .DS_Store
 Thumbs.db
-.idea/
-.vscode/*
-!.vscode/extensions.json
-*.pem
+*.log
 
-# vercel
-.vercel
-
-# typescript
+# ---- Build artifacts ----
 *.tsbuildinfo
-next-env.d.ts
+
+# ---- Vercel ----
+.vercel/

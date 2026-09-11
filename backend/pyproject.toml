@@ -1,0 +1,37 @@
+[project]
+name = "smartsme-backend"
+version = "1.0.0"
+description = "SmartSME API: FastAPI + SQLAlchemy + Postgres"
+requires-python = ">=3.10"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "I",    # import sorting
+    "UP",   # pyupgrade
+    "B",    # bugbear
+    "C4",   # comprehensions
+    "SIM",  # simplifications
+    "RUF",  # ruff-specific
+]
+ignore = [
+    "B008",    # FastAPI's Depends()/File() defaults are the documented idiom.
+    "RUF012",  # Pydantic handles mutable class defaults itself.
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Re-export modules: names are imported for the public surface, not used here.
+"app/models/__init__.py" = ["F401"]
+"app/schemas/__init__.py" = ["F401"]
+# LLM prompts are kept verbatim; rewrapping them would change what the model reads.
+"app/ai/nlp.py" = ["E501"]
+"app/ai/ocr.py" = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

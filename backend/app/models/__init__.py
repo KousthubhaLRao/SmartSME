@@ -1,0 +1,34 @@
+"""ORM models, grouped by the part of the business they describe.
+
+Importing this package registers every table on `Base.metadata`, which is what
+Alembic autogenerate compares against.
+"""
+
+from .base import Base
+from .business import Business, User
+from .event import Event
+from .expense import Expense
+from .notification import Notification
+from .party import Party
+from .product import Product, StockMovement
+from .purchase import Purchase, PurchaseItem
+from .sale import Sale, SaleItem
+from .workflow import WorkflowExecution, WorkflowRule
+
+__all__ = [
+    "Base",
+    "Business",
+    "Event",
+    "Expense",
+    "Notification",
+    "Party",
+    "Product",
+    "Purchase",
+    "PurchaseItem",
+    "Sale",
+    "SaleItem",
+    "StockMovement",
+    "User",
+    "WorkflowExecution",
+    "WorkflowRule",
+]
