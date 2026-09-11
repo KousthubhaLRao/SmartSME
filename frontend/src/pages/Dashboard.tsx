@@ -139,7 +139,7 @@ export function Dashboard() {
               <CardTitle>Revenue trend</CardTitle>
               <CardDescription>Gross profit {money(o.grossProfit, cur)}</CardDescription>
             </div>
-            <Link to="/reports" className="text-sm text-primary hover:underline">
+            <Link to="/reports" className="text-sm text-link hover:underline">
               Reports →
             </Link>
           </CardHeader>
@@ -176,7 +176,7 @@ export function Dashboard() {
         <SectionCard
           title="Recent sales"
           action={
-            <Link to="/sales" className="text-sm text-primary hover:underline">
+            <Link to="/sales" className="text-sm text-link hover:underline">
               View all
             </Link>
           }
@@ -197,7 +197,7 @@ export function Dashboard() {
                     <Icon name="sales" size={16} />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <Link to={`/sales/${s.id}`} className="font-medium hover:text-primary">
+                    <Link to={`/sales/${s.id}`} className="font-medium hover:text-link">
                       {s.invoiceNumber}
                     </Link>
                     <div className="text-xs text-muted-foreground">
@@ -217,7 +217,7 @@ export function Dashboard() {
         <SectionCard
           title="Recent purchases"
           action={
-            <Link to="/purchases" className="text-sm text-primary hover:underline">
+            <Link to="/purchases" className="text-sm text-link hover:underline">
               View all
             </Link>
           }
@@ -257,7 +257,7 @@ export function Dashboard() {
       <SectionCard
         title="Needs attention"
         action={
-          <Link to="/notifications" className="text-sm text-primary hover:underline">
+          <Link to="/notifications" className="text-sm text-link hover:underline">
             All alerts
           </Link>
         }

@@ -15,6 +15,7 @@ Vite + Tailwind on the frontend, talking over a cookie-authenticated JSON API.
 ## Contents
 
 - [Quick start](#quick-start)
+- [Setting up on a new machine](#setting-up-on-a-new-machine)
 - [Environment variables](#environment-variables)
 - [Repository layout](#repository-layout)
 - [Feature tour](#feature-tour)
@@ -55,6 +56,14 @@ npm install
 npm run dev                     # http://localhost:5173
 ```
 
+**After that first setup, on Windows:** `.\run-dev.ps1` from the repo root opens
+both servers in their own PowerShell windows, titled "SmartSME API" and
+"SmartSME web". It checks the virtualenv, the frontend dependencies, the Postgres
+container and both ports first, and reports what is missing rather than flashing
+a window shut. Each window stays open when its server stops, so a crash on
+startup is still readable. If script execution is blocked on your machine, run
+`powershell -ExecutionPolicy Bypass -File .\run-dev.ps1`.
+
 Open <http://localhost:5173> and either create an account or use the seeded demo
 login:
 
@@ -71,6 +80,143 @@ To reset everything: `docker compose down -v && docker compose up -d && alembic 
 
 The Vite dev server proxies `/api` to `http://localhost:8000`, which keeps the
 session cookie first-party in development (no CORS or SameSite juggling).
+
+---
+
+## Setting up on a new machine
+
+What to do after cloning or pulling on a machine that has never run SmartSME.
+None of it is optional: the repo deliberately carries no secrets, no virtualenv
+and no `node_modules`, so four things have to be built locally.
+
+### 1. Install the prerequisites
+
+| Tool | Version | Check it with |
+|---|---|---|
+| Git | any | `git --version` |
+| Python | 3.10 or newer | `python --version` |
+| Node.js | 18 or newer | `node -v` |
+| Docker Desktop | any, and **running** | `docker ps` |
+
+On Windows, install Python from python.org with **"Add python.exe to PATH"**
+ticked, and start Docker Desktop before going further — `docker ps` has to answer
+with a table, not an error.
+
+### 2. Get the code
+
+```bash
+git clone <repo-url> SmartSME
+cd SmartSME
+```
+
+### 3. Start PostgreSQL
+
+```bash
+docker compose up -d       # Postgres 16, published on localhost:5432
+docker ps                  # expect smartsme-db-1, status "Up"
+```
+
+There is no embedded-database fallback: the API exits on startup if it cannot
+reach Postgres. Nothing needs to be installed on the host — the database lives
+inside the container, and `psql` can be reached with
+`docker exec -it smartsme-db-1 psql -U smartsme -d smartsme`.
+
+### 4. Set up the backend
+
+```bash
+cd backend
+python -m venv .venv
+.venv\Scripts\activate              # Windows PowerShell
+# source .venv/bin/activate         # macOS / Linux
+pip install -r requirements.txt
+```
+
+Then create the config, **which the pull does not bring** — `backend/.env` is
+git-ignored so that nobody's keys travel through the repo. Every machine makes
+its own from the template:
+
+```bash
+copy .env.example .env              # Windows;  cp .env.example .env elsewhere
+```
+
+Open `backend/.env` and set `AUTH_SECRET` to a long random string. Generate one:
+
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+The defaults for everything else already match the Docker database and the Vite
+dev server, so `AUTH_SECRET` is the only line that must change. An AI key is
+optional — see [step 7](#7-optional-turn-on-the-ai-features).
+
+Create the schema:
+
+```bash
+alembic upgrade head
+```
+
+### 5. Set up the frontend
+
+```bash
+cd ../frontend
+npm install
+```
+
+### 6. Run it
+
+On Windows, from the repo root:
+
+```powershell
+.\run-dev.ps1
+```
+
+Or start the two servers by hand, in two terminals:
+
+```bash
+cd backend && .venv\Scripts\activate && uvicorn app.main:app --reload
+cd frontend && npm run dev
+```
+
+Open <http://localhost:5173> and sign in as `demo@smartsme.app` / `demo1234`. The
+first boot seeds that demo business automatically.
+
+To confirm the whole stack is wired up, run the tests — 78 should pass:
+
+```bash
+cd backend
+.venv\Scripts\python -m pytest -q
+```
+
+### 7. Optional: turn on the AI features
+
+Without a key the app still runs: Smart Input falls back to a built-in regex
+parser and photo OCR is disabled with a message explaining why. To enable both,
+put one key in `backend/.env` (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`,
+`GROQ_API_KEY` or `GOOGLE_API_KEY`) and restart the API. The Settings page shows
+which provider is live and whether it can read images.
+
+### What the pull does not include
+
+| Path | Why | How to get it |
+|---|---|---|
+| `backend/.env` | holds secrets | copy `backend/.env.example`, set `AUTH_SECRET` |
+| `backend/.venv/` | machine-specific | `python -m venv .venv` + `pip install -r requirements.txt` |
+| `frontend/node_modules/` | machine-specific | `npm install` |
+| the database | lives in a Docker volume | `docker compose up -d` + `alembic upgrade head` |
+| `.env.local`, `.neon` | Neon deployment credentials | not needed to run locally |
+
+### If something goes wrong on the first run
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `WinError 10013` on uvicorn, or `address already in use` | port 8000 is taken | `netstat -ano \| findstr :8000`, then stop that process |
+| `Port 5173 is in use, trying another one` | another Vite is running | harmless — the proxy still targets :8000 — or stop the other one |
+| Postgres container will not start, port 5432 in use | a native PostgreSQL is installed on the host | stop that service, or change the published port in `docker-compose.yml` |
+| API exits with a connection error on startup | the container is not running | `docker compose up -d` |
+| `alembic` / `uvicorn` "not recognised" | the virtualenv is not active | activate it, or call `.venv\Scripts\python -m uvicorn ...` |
+| `.\run-dev.ps1` is blocked | PowerShell execution policy | `powershell -ExecutionPolicy Bypass -File .\run-dev.ps1` |
+| `does not provide an export named …` in the browser | Vite cached a module that has since changed | stop the dev server and `npm run dev` again |
+| relation "businesses" does not exist | migrations never ran | `alembic upgrade head` |
 
 ---
 
@@ -124,12 +270,16 @@ page shows which provider is active and whether it can read images.
 ```
 SmartSME/
 ├── docker-compose.yml          PostgreSQL 16
+├── run-dev.ps1                 starts both dev servers (Windows)
 ├── backend/
 │   ├── alembic/                migrations (versions/0001_initial_schema.py)
 │   ├── alembic.ini
 │   ├── pyproject.toml          ruff (lint + format) and pytest config
 │   ├── requirements.txt
-│   ├── tests/                  pytest (pure domain logic, no database)
+│   ├── tests/                  pytest
+│   │   ├── conftest.py         scratch test database + client fixtures
+│   │   ├── test_domain.py      pure domain logic, no database
+│   │   └── test_api_smoke.py   every endpoint, end to end
 │   └── app/
 │       ├── main.py             FastAPI app, CORS, lifespan (seed + worker)
 │       │
@@ -182,7 +332,8 @@ SmartSME/
         ├── App.tsx             routes + session guard
         ├── index.css           design tokens (light/dark) + print rules
         ├── lib/                api.ts (client + hooks) · utils.ts · countries.ts
-        ├── components/         AppShell, RevenueChart, LineItemsEditor, ui/*
+        ├── components/         AppShell, AuthLayout, RevenueChart,
+        │                       LineItemsEditor, ui/*
         └── pages/              Dashboard, SmartInput, Sales, SaleInvoice,
                                 Purchases, Products, Parties, Expenses, Reports,
                                 Workflow, Events, Notifications, Settings, auth
@@ -496,6 +647,24 @@ inline script to avoid a flash. No component library — `src/components/ui/*` h
 small primitives (Button, Card, Table, Modal, Input, Badge) and
 `src/components/Icon.tsx` is a dependency-free stroke icon set.
 
+**Colour.** One lime brand (`--primary: #f0f941`) across both themes, on warm
+neutral surfaces. The lime is a *fill* colour only — at ~0.95 lightness it is
+unreadable as text on a light ground — so anything that carries meaning as text
+uses `--link` instead: deep citron in light mode, the lime itself on the dark
+ground. Buttons, the active nav item and the brand mark use `--primary`; links,
+small marks and hover accents use `--link`.
+
+The chart tokens (`--chart-1` … `--chart-5`) are a separate, deliberately stepped
+palette rather than the UI lime, validated for the OKLCH lightness band, a chroma
+floor, adjacent-pair separation under colour-vision deficiency, and contrast
+against the chart surface. The dark set steps down from the UI lime because a
+0.95-lightness mark blooms against a near-black ground.
+
+The sign-in and sign-up pages share `src/components/AuthLayout.tsx`: a lime brand
+panel beside the form. The panel keeps its colour in both themes — it *is* the
+brand — while the form panel follows the app surface, and below `lg` it collapses
+to a banner above the form rather than disappearing.
+
 The sidebar is resizable by dragging the handle on its edge and collapses to an
 icon-only rail when that handle is clicked; both the width and collapsed state
 persist.
@@ -510,14 +679,56 @@ entirely "load a page, mutate, reload".
 
 ```bash
 cd backend
-.venv/Scripts/python -m pytest tests -q        # 42 unit tests, no database needed
+.venv/Scripts/python -m pytest -q              # 78 tests
 ```
 
-Covers the maths and parsing that the money and Smart Input features depend on:
-discount-before-tax totals for sales and purchases, `round2` half-up rounding,
-line-item validation, the full date-phrase parser, discount extraction, the
-heuristic classifier, party/product fuzzy matching, report period resolution, and
-password hashing.
+```
+================================ test summary =================================
+  Domain units     42 passed
+  Endpoint smoke   36 passed
+-------------------------------------------------------------------------------
+  78 passed in 2.57s
+```
+
+Hooks in `tests/conftest.py` replace pytest's default report order. Pytest prints
+failures first and the counts last, so after a long run the thing you actually
+want has scrolled off; here a per-layer summary comes last, with the failures —
+full traceback and assertion diff — printed underneath it. A skip prints its
+reason, which is almost always "Postgres is unreachable".
+
+Two layers, in one run.
+
+**`tests/test_domain.py` — 42 unit tests, no database.** The maths and parsing the
+money and Smart Input features depend on: discount-before-tax totals for sales and
+purchases, `round2` half-up rounding, line-item validation, the full date-phrase
+parser, discount extraction, the heuristic classifier, party/product fuzzy
+matching, report period resolution, and password hashing.
+
+**`tests/test_api_smoke.py` — 36 tests over every endpoint.** One pass across the
+whole HTTP surface: all 54 routes are called the way the SPA calls them and the
+response is checked for the shape the client relies on — routing, auth,
+serialization, the domain call behind each route, and the event effects that
+follow a write (a sale moves stock before the request returns; cancelling it puts
+the stock back; a workflow rule raises a notification). Error paths are part of
+the sweep too: 401 without a session, 404 for a missing document, 400 for an empty
+sale, an unknown event type, an out-of-range tax rate and an empty report period.
+
+The smoke tests need Postgres, so start it first with `docker compose up -d`. They
+never touch your development data:
+
+- `tests/conftest.py` drops and recreates a scratch **`smartsme_test`** database
+  beside the configured one, and runs `alembic upgrade head` into it — so the
+  migrations are smoke-tested as well.
+- The demo seed is off and each run signs up its own business, so counts are
+  deterministic.
+- The background worker is off; the write endpoints drain the event queue inline,
+  which is what makes the effects assertable.
+- Every AI key is cleared, so Smart Input falls back to its built-in parser and
+  OCR reports itself unavailable. **The suite makes no network calls** and costs
+  nothing to run.
+
+If Postgres is unreachable the smoke tests skip with a note and the unit tests
+still run.
 
 Frontend: `npm run typecheck` and `npm run build` in `frontend/`.
 

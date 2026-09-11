@@ -205,9 +205,9 @@ export function AppShell({
           onMouseDown={onHandleMouseDown}
           aria-label="Resize sidebar, or click to collapse"
           title="Drag to resize · click to collapse"
-          className="group absolute right-0 top-1/2 z-20 hidden h-12 w-4 -translate-y-1/2 translate-x-1/2 cursor-ew-resize items-center justify-center rounded-full border border-border bg-card shadow-sm hover:border-primary/40 lg:flex"
+          className="group absolute right-0 top-1/2 z-20 hidden h-12 w-4 -translate-y-1/2 translate-x-1/2 cursor-ew-resize items-center justify-center rounded-full border border-border bg-card shadow-sm hover:border-link/40 lg:flex"
         >
-          <span className="h-5 w-[3px] rounded-full bg-border transition-colors group-hover:bg-primary" />
+          <span className="h-5 w-[3px] rounded-full bg-border transition-colors group-hover:bg-link" />
         </button>
       </aside>
 

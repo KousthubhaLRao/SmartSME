@@ -322,7 +322,7 @@ export function Sales() {
             <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4">
               <Link
                 to={`/sales/${detail.id}`}
-                className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                className="inline-flex items-center gap-1 text-sm text-link hover:underline"
               >
                 Open full invoice <Icon name="chevronRight" size={15} />
               </Link>

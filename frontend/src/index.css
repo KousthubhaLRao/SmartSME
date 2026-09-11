@@ -4,31 +4,36 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ------------------------------------------------------------------ */
-/* Design tokens. Indigo-forward with warm-neutral surfaces. Light is  */
-/* the default; the .dark class on <html> flips them.                  */
+/* Design tokens. One lime brand across both themes, on warm-neutral  */
+/* surfaces. Light is the default; the .dark class on <html> flips it. */
 /* ------------------------------------------------------------------ */
 :root {
-  --background: #f8f9ff;
-  --foreground: #11142f;
+  --background: #fbfbf7;
+  --foreground: #16180f;
 
   --card: #ffffff;
-  --card-foreground: #151735;
+  --card-foreground: #171a10;
 
   --popover: #ffffff;
-  --popover-foreground: #1a1a1e;
+  --popover-foreground: #171a10;
 
-  --muted: #f2f3fb;
-  --muted-foreground: #667197;
+  --muted: #f2f3ea;
+  --muted-foreground: #6a6f5b;
 
-  --primary: #5b32f5;
-  --primary-hover: #4822d7;
-  --primary-foreground: #ffffff;
+  --primary: #f0f941;
+  --primary-hover: #e2ee1c;
+  --primary-foreground: #14170a;
 
-  --secondary: #f0efff;
-  --secondary-foreground: #252060;
+  /* Brand ink for links and small marks. The lime is a fill colour only: at
+     ~0.95 lightness it is unreadable as text on a light ground, so anything
+     that carries meaning as *text* uses this deep citron instead. */
+  --link: #4e5a0b;
 
-  --accent: #eeecff;
-  --accent-foreground: #4930df;
+  --secondary: #f5f7e6;
+  --secondary-foreground: #3a4209;
+
+  --accent: #eef4cb;
+  --accent-foreground: #46500a;
 
   --destructive: #dc2626;
   --destructive-hover: #b91c1c;
@@ -36,20 +41,22 @@
 
   --success: #16a34a;
   --success-foreground: #ffffff;
-  --warning: #d97706;
+  --warning: #b45309;
   --warning-foreground: #ffffff;
-  --info: #2563eb;
+  --info: #1d4ed8;
   --info-foreground: #ffffff;
 
-  --border: #e7e9f4;
-  --input: #dfe2ef;
-  --ring: #6249f5;
+  --border: #e8e9dc;
+  --input: #dee0cd;
+  --ring: #a8b514;
 
-  --chart-1: #4f46e5;
-  --chart-2: #0ea5e9;
-  --chart-3: #f59e0b;
-  --chart-4: #ec4899;
-  --chart-5: #14b8a6;
+  /* Categorical series, brand-led. Validated for the lightness band, chroma
+     floor, CVD separation and contrast against a white card. */
+  --chart-1: #5f6f00;
+  --chart-2: #0891b2;
+  --chart-3: #9333ea;
+  --chart-4: #c2410c;
+  --chart-5: #1d4ed8;
 
   --radius: 1rem;
 }
@@ -68,8 +75,12 @@
   --muted-foreground: #aaa6af;
 
   --primary: #f0f941;
-  --primary-hover: #f0f941;
+  --primary-hover: #f5fd6a;
   --primary-foreground: #141116;
+
+  /* On the near-black ground the lime is legible as text, so link ink is the
+     brand colour itself. */
+  --link: #f0f941;
 
   --secondary: #1b1b1e;
   --secondary-foreground: #f7f7f2;
@@ -92,11 +103,13 @@
   --input: #25232a;
   --ring: #f0f941;
 
-  --chart-1: #f0f941;
-  --chart-2: #7ec7e8;
-  --chart-3: #f0bf72;
-  --chart-4: #f29a9a;
-  --chart-5: #78d6a3;
+  /* Stepped down from the UI lime: a 0.95-lightness mark blooms against the
+     dark ground and the old set collapsed under deuteranopia. */
+  --chart-1: #8d991f;
+  --chart-2: #2e9bc7;
+  --chart-3: #7c5bd4;
+  --chart-4: #c9762c;
+  --chart-5: #2fa07a;
 }
 
 @theme inline {
@@ -111,6 +124,7 @@
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
+  --color-link: var(--link);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-accent: var(--accent);
