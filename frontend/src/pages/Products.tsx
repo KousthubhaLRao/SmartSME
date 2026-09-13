@@ -9,6 +9,7 @@ import { Modal } from "@/components/ui/modal";
 import { Field, Input } from "@/components/ui/input";
 import { Icon } from "@/components/Icon";
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { Can, PERMISSIONS } from "@/lib/session";
 import { cn, formatDateTime, money } from "@/lib/utils";
 
 interface ProductRow {
@@ -64,9 +65,11 @@ export function Products() {
   return (
     <div className="space-y-6">
       <PageHeader title="Products" description="Inventory, pricing and stock movements.">
-        <Button onClick={() => setCreating(true)}>
-          <Icon name="plus" size={16} /> New product
-        </Button>
+        <Can do={PERMISSIONS.catalogWrite}>
+          <Button onClick={() => setCreating(true)}>
+            <Icon name="plus" size={16} /> New product
+          </Button>
+        </Can>
       </PageHeader>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -157,6 +160,7 @@ export function Products() {
                         <Icon name="edit" size={16} />
                       </button>
                       <ConfirmButton
+                        needs={PERMISSIONS.dataManage}
                         action={() => api.del(`/products/${p.id}`)}
                         title="Delete product?"
                         message={`"${p.name}" will be removed. Products that appear on past invoices cannot be deleted.`}

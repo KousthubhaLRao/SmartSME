@@ -5,6 +5,7 @@ import { api, useApi } from "@/lib/api";
 import { Icon, type IconName } from "./Icon";
 import { BrandLockup, BrandMark } from "./Brand";
 import { ThemeToggle } from "./ThemeToggle";
+import { PERMISSIONS, useSession, type Permission } from "@/lib/session";
 
 const COLLAPSE_KEY = "smartsme:sidebar-collapsed";
 const WIDTH_KEY = "smartsme:sidebar-width";
@@ -13,13 +14,15 @@ const MAX_WIDTH = 460;
 const DEFAULT_WIDTH = 256;
 const RAIL_WIDTH = 64;
 
-type NavItem = { to: string; label: string; icon: IconName };
+/** `needs` hides the entry for roles without that permission. The API enforces
+ *  the same rule, so this is about not offering a door that will not open. */
+type NavItem = { to: string; label: string; icon: IconName; needs?: Permission };
 
 const NAV: { label?: string; items: NavItem[] }[] = [
   {
     items: [
       { to: "/dashboard", label: "Dashboard", icon: "dashboard" },
-      { to: "/input", label: "Smart Input", icon: "input" },
+      { to: "/input", label: "Smart Input", icon: "input", needs: PERMISSIONS.txnWrite },
     ],
   },
   {
@@ -36,8 +39,9 @@ const NAV: { label?: string; items: NavItem[] }[] = [
     label: "Insight & automation",
     items: [
       { to: "/reports", label: "Reports", icon: "reports" },
-      { to: "/workflow", label: "Workflow", icon: "workflow" },
+      { to: "/workflow", label: "Workflow", icon: "workflow", needs: PERMISSIONS.configWrite },
       { to: "/events", label: "Event bus", icon: "events" },
+      { to: "/team", label: "Team", icon: "parties", needs: PERMISSIONS.usersManage },
     ],
   },
 ];
@@ -46,13 +50,17 @@ export function AppShell({
   businessName,
   userName,
   userEmail,
+  onSwitchBusiness,
   children,
 }: {
   businessName: string;
   userName: string;
   userEmail: string;
+  /** Platform roles only: go back to the business picker. */
+  onSwitchBusiness?: () => void;
   children: React.ReactNode;
 }) {
+  const { can, isPlatform, me } = useSession();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -168,16 +176,20 @@ export function AppShell({
       </div>
 
       <nav className="flex flex-1 flex-col gap-6 overflow-y-auto px-3 py-4">
-        {NAV.map((group, gi) => (
-          <div key={gi} className="flex flex-col gap-1">
-            {group.label && !mini && (
-              <div className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                {group.label}
-              </div>
-            )}
-            {group.items.map((item) => navLink(item, mini))}
-          </div>
-        ))}
+        {NAV.map((group, gi) => {
+          const items = group.items.filter((item) => !item.needs || can(item.needs));
+          if (items.length === 0) return null;
+          return (
+            <div key={gi} className="flex flex-col gap-1">
+              {group.label && !mini && (
+                <div className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                  {group.label}
+                </div>
+              )}
+              {items.map((item) => navLink(item, mini))}
+            </div>
+          );
+        })}
       </nav>
 
       <div className="border-t border-border p-3">
@@ -233,6 +245,14 @@ export function AppShell({
           <div className="flex min-w-0 items-center gap-2">
             <Icon name="building" size={16} className="text-muted-foreground" />
             <span className="truncate text-sm font-medium">{businessName}</span>
+            {isPlatform && (
+              <button
+                onClick={onSwitchBusiness}
+                className="ml-1 rounded-md px-2 py-1 text-xs font-semibold text-link hover:bg-muted"
+              >
+                Switch
+              </button>
+            )}
           </div>
 
           <div className="ml-auto flex items-center gap-1">
@@ -256,6 +276,7 @@ export function AppShell({
               <div className="hidden leading-tight sm:block">
                 <div className="text-sm font-medium">{userName}</div>
                 <div className="text-[11px] text-muted-foreground">{userEmail}</div>
+                <div className="text-[11px] font-medium text-link">{me.user.roleLabel}</div>
               </div>
               <button
                 onClick={signOut}

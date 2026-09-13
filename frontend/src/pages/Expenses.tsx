@@ -10,6 +10,7 @@ import { Field, Input, Select } from "@/components/ui/input";
 import { BarList } from "@/components/ui/bar-list";
 import { Icon } from "@/components/Icon";
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { Can, PERMISSIONS } from "@/lib/session";
 import { formatDate, money, toDateInputValue } from "@/lib/utils";
 
 const CATEGORIES = [
@@ -49,9 +50,11 @@ export function Expenses() {
   return (
     <div className="space-y-6">
       <PageHeader title="Expenses" description="Operating costs, categorised.">
-        <Button onClick={() => setOpen(true)}>
-          <Icon name="plus" size={16} /> New expense
-        </Button>
+        <Can do={PERMISSIONS.txnWrite}>
+          <Button onClick={() => setOpen(true)}>
+            <Icon name="plus" size={16} /> New expense
+          </Button>
+        </Can>
       </PageHeader>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -112,6 +115,7 @@ export function Expenses() {
                     <TD>
                       <div className="flex justify-end">
                         <ConfirmButton
+                          needs={PERMISSIONS.dataManage}
                           action={() => api.del(`/expenses/${e.id}`)}
                           title="Delete expense?"
                           message={`"${e.description}" will be removed.`}

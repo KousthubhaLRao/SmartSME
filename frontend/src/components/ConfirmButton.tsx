@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Modal } from "./ui/modal";
 import { Button } from "./ui/button";
 import { useMutation } from "@/lib/api";
+import { useCan, type Permission } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
 export function ConfirmButton({
@@ -13,6 +14,7 @@ export function ConfirmButton({
   className,
   danger,
   onDone,
+  needs,
 }: {
   action: () => Promise<unknown>;
   title: string;
@@ -22,9 +24,14 @@ export function ConfirmButton({
   className?: string;
   danger?: boolean;
   onDone?: () => void;
+  /** Hide the button entirely when the session cannot use it. The API refuses
+   *  it regardless; this stops a destructive control being offered at all. */
+  needs?: Permission;
 }) {
   const [open, setOpen] = useState(false);
   const { run, pending, error } = useMutation();
+  const can = useCan();
+  const allowed = !needs || can(needs);
 
   async function go() {
     const ok = await run(action, () => {
@@ -33,6 +40,8 @@ export function ConfirmButton({
     });
     if (!ok) return;
   }
+
+  if (!allowed) return null;
 
   return (
     <>

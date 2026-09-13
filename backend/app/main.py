@@ -17,7 +17,7 @@ from sqlalchemy import text
 
 from .core.config import settings
 from .core.db import SessionLocal, engine
-from .routers import auth, catalog, ops, purchases, reports, sales
+from .routers import auth, catalog, ops, platform, purchases, reports, sales, users
 from .routers import input as input_router
 from .worker import start_worker, stop_worker
 
@@ -84,5 +84,7 @@ for r in (
     catalog.router,
     input_router.router,
     ops.router,
+    users.router,
+    platform.router,
 ):
     app.include_router(r)

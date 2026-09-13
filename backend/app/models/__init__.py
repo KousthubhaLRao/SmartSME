@@ -4,6 +4,7 @@ Importing this package registers every table on `Base.metadata`, which is what
 Alembic autogenerate compares against.
 """
 
+from .access import Invite, LoginAttempt
 from .base import Base
 from .business import Business, User
 from .event import Event
@@ -20,6 +21,8 @@ __all__ = [
     "Business",
     "Event",
     "Expense",
+    "Invite",
+    "LoginAttempt",
     "Notification",
     "Party",
     "Product",

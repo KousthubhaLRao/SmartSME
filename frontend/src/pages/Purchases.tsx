@@ -13,6 +13,7 @@ import { LineItemsEditor, type EditorProduct, type LineRow } from "@/components/
 import { RecordPaymentButton } from "@/components/RecordPaymentButton";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { EditDateButton } from "@/components/EditDateButton";
+import { Can, PERMISSIONS } from "@/lib/session";
 import { formatDate, money, toDateInputValue } from "@/lib/utils";
 
 interface PurchaseRow {
@@ -102,9 +103,11 @@ export function Purchases() {
   return (
     <div className="space-y-6">
       <PageHeader title="Purchases" description="Supplier bills and purchase orders.">
-        <Button onClick={() => setNewOpen(true)}>
-          <Icon name="plus" size={16} /> New purchase
-        </Button>
+        <Can do={PERMISSIONS.txnWrite}>
+          <Button onClick={() => setNewOpen(true)}>
+            <Icon name="plus" size={16} /> New purchase
+          </Button>
+        </Can>
       </PageHeader>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -192,6 +195,7 @@ export function Purchases() {
                         )}
                         {!cancelled && (
                           <ConfirmButton
+                            needs={PERMISSIONS.dataManage}
                             action={() => api.post(`/purchases/${p.id}/cancel`)}
                             title="Cancel purchase?"
                             message={`This removes received stock and reverses the payable for ${p.referenceNumber}.`}
@@ -231,6 +235,7 @@ export function Purchases() {
           <div className="space-y-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <EditDateButton
+                needs={PERMISSIONS.dataManage}
                 date={detail.date}
                 label="Change bill date"
                 onSave={(d) => api.patch(`/purchases/${detail.id}/date`, { date: d })}

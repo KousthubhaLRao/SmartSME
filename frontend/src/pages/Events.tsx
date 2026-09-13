@@ -5,6 +5,7 @@ import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Icon } from "@/components/Icon";
+import { Can, PERMISSIONS } from "@/lib/session";
 import { cn, formatDateTime } from "@/lib/utils";
 
 interface EventRow {
@@ -55,13 +56,15 @@ export function Events() {
         title="Event bus"
         description="The transactional outbox, draining into the workflow engine."
       >
-        <Button
-          variant="outline"
-          disabled={pending}
-          onClick={() => run(() => api.post("/events/drain"), reload)}
-        >
-          <Icon name="refresh" size={16} /> Drain queue
-        </Button>
+        <Can do={PERMISSIONS.eventsOperate}>
+          <Button
+            variant="outline"
+            disabled={pending}
+            onClick={() => run(() => api.post("/events/drain"), reload)}
+          >
+            <Icon name="refresh" size={16} /> Drain queue
+          </Button>
+        </Can>
       </PageHeader>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -149,14 +152,16 @@ export function Events() {
                   <TD>
                     <div className="flex justify-end">
                       {(e.status === "dead" || e.status === "done") && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={pending}
-                          onClick={() => run(() => api.post(`/events/${e.id}/replay`), reload)}
-                        >
-                          Replay
-                        </Button>
+                        <Can do={PERMISSIONS.eventsOperate}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={pending}
+                            onClick={() => run(() => api.post(`/events/${e.id}/replay`), reload)}
+                          >
+                            Replay
+                          </Button>
+                        </Can>
                       )}
                     </div>
                   </TD>

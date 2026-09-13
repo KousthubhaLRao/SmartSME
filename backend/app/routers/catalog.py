@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 
 from .. import serializers as ser
-from ..core.deps import CurrentUser, Db
+from ..core.deps import CurrentUser, Db, require
+from ..core.roles import P
 from ..core.utils import round2
 from ..domain import catalog
 from ..domain.payments import settle_all_outstanding, settle_party
@@ -22,7 +23,7 @@ router = APIRouter(prefix="/api", tags=["catalog"])
 # ---------------------------------------------------------------------------
 # Products
 # ---------------------------------------------------------------------------
-@router.get("/products")
+@router.get("/products", dependencies=[Depends(require(P.DATA_READ))])
 def list_products(ctx: CurrentUser, db: Db) -> dict:
     products = list(
         db.scalars(
@@ -50,7 +51,7 @@ def list_products(ctx: CurrentUser, db: Db) -> dict:
     }
 
 
-@router.post("/products", status_code=201)
+@router.post("/products", status_code=201, dependencies=[Depends(require(P.CATALOG_WRITE))])
 def create_product(body: ProductInput, ctx: CurrentUser, db: Db) -> dict:
     try:
         product = catalog.create_product(db, ctx.business.id, body)
@@ -59,7 +60,7 @@ def create_product(body: ProductInput, ctx: CurrentUser, db: Db) -> dict:
     return ser.product(product)
 
 
-@router.put("/products/{product_id}")
+@router.put("/products/{product_id}", dependencies=[Depends(require(P.CATALOG_WRITE))])
 def update_product(product_id: uuid.UUID, body: ProductInput, ctx: CurrentUser, db: Db) -> dict:
     try:
         catalog.update_product(db, ctx.business.id, product_id, body)
@@ -68,7 +69,7 @@ def update_product(product_id: uuid.UUID, body: ProductInput, ctx: CurrentUser, 
     return {"ok": True}
 
 
-@router.post("/products/{product_id}/adjust")
+@router.post("/products/{product_id}/adjust", dependencies=[Depends(require(P.TXN_WRITE))])
 def adjust_stock(product_id: uuid.UUID, body: StockAdjustInput, ctx: CurrentUser, db: Db) -> dict:
     try:
         catalog.adjust_stock(db, ctx.business.id, product_id, body.delta, body.note)
@@ -78,7 +79,7 @@ def adjust_stock(product_id: uuid.UUID, body: StockAdjustInput, ctx: CurrentUser
     return {"ok": True}
 
 
-@router.delete("/products/{product_id}")
+@router.delete("/products/{product_id}", dependencies=[Depends(require(P.DATA_MANAGE))])
 def delete_product(product_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
     try:
         catalog.delete_product(db, ctx.business.id, product_id)
@@ -90,7 +91,7 @@ def delete_product(product_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
 # ---------------------------------------------------------------------------
 # Parties
 # ---------------------------------------------------------------------------
-@router.get("/parties")
+@router.get("/parties", dependencies=[Depends(require(P.DATA_READ))])
 def list_parties(ctx: CurrentUser, db: Db) -> dict:
     parties = list(
         db.scalars(select(Party).where(Party.business_id == ctx.business.id).order_by(Party.name))
@@ -154,7 +155,7 @@ def list_parties(ctx: CurrentUser, db: Db) -> dict:
     }
 
 
-@router.post("/parties", status_code=201)
+@router.post("/parties", status_code=201, dependencies=[Depends(require(P.CATALOG_WRITE))])
 def create_party(body: PartyInput, ctx: CurrentUser, db: Db) -> dict:
     try:
         party = catalog.create_party(db, ctx.business.id, body)
@@ -163,7 +164,7 @@ def create_party(body: PartyInput, ctx: CurrentUser, db: Db) -> dict:
     return ser.party(party)
 
 
-@router.put("/parties/{party_id}")
+@router.put("/parties/{party_id}", dependencies=[Depends(require(P.CATALOG_WRITE))])
 def update_party(party_id: uuid.UUID, body: PartyInput, ctx: CurrentUser, db: Db) -> dict:
     try:
         catalog.update_party(db, ctx.business.id, party_id, body)
@@ -172,13 +173,13 @@ def update_party(party_id: uuid.UUID, body: PartyInput, ctx: CurrentUser, db: Db
     return {"ok": True}
 
 
-@router.delete("/parties/{party_id}")
+@router.delete("/parties/{party_id}", dependencies=[Depends(require(P.DATA_MANAGE))])
 def delete_party(party_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
     catalog.delete_party(db, ctx.business.id, party_id)
     return {"ok": True}
 
 
-@router.post("/parties/{party_id}/settle")
+@router.post("/parties/{party_id}/settle", dependencies=[Depends(require(P.DATA_MANAGE))])
 def settle_one(party_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
     try:
         result = settle_party(db, ctx.business.id, party_id)
@@ -187,7 +188,7 @@ def settle_one(party_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
     return result.model_dump()
 
 
-@router.post("/parties/settle-all/{kind}")
+@router.post("/parties/settle-all/{kind}", dependencies=[Depends(require(P.DATA_MANAGE))])
 def settle_all(kind: str, ctx: CurrentUser, db: Db) -> dict:
     if kind not in ("receivable", "payable"):
         raise HTTPException(status_code=400, detail="kind must be receivable or payable.")
@@ -197,7 +198,7 @@ def settle_all(kind: str, ctx: CurrentUser, db: Db) -> dict:
 # ---------------------------------------------------------------------------
 # Expenses
 # ---------------------------------------------------------------------------
-@router.get("/expenses")
+@router.get("/expenses", dependencies=[Depends(require(P.DATA_READ))])
 def list_expenses(ctx: CurrentUser, db: Db) -> dict:
     rows = list(
         db.scalars(
@@ -223,7 +224,7 @@ def list_expenses(ctx: CurrentUser, db: Db) -> dict:
     }
 
 
-@router.post("/expenses", status_code=201)
+@router.post("/expenses", status_code=201, dependencies=[Depends(require(P.TXN_WRITE))])
 def create_expense(body: ExpenseInput, ctx: CurrentUser, db: Db) -> dict:
     try:
         expense = catalog.create_expense(db, ctx.business.id, body)
@@ -233,7 +234,7 @@ def create_expense(body: ExpenseInput, ctx: CurrentUser, db: Db) -> dict:
     return ser.expense(expense)
 
 
-@router.delete("/expenses/{expense_id}")
+@router.delete("/expenses/{expense_id}", dependencies=[Depends(require(P.DATA_MANAGE))])
 def delete_expense(expense_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
     catalog.delete_expense(db, ctx.business.id, expense_id)
     return {"ok": True}

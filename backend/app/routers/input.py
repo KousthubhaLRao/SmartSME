@@ -5,11 +5,12 @@ from __future__ import annotations
 import base64
 from typing import Any
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import select
 
 from ..ai.client import ai_status, has_vision
-from ..core.deps import CurrentUser, Db
+from ..core.deps import CurrentUser, Db, require
+from ..core.roles import P
 from ..models import Party, Product
 from ..schemas import ParseTextInput
 from ..smart_input import draft_from_image, draft_from_text, publish_draft
@@ -20,7 +21,7 @@ router = APIRouter(prefix="/api/input", tags=["smart-input"])
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
 
 
-@router.get("/status")
+@router.get("/status", dependencies=[Depends(require(P.DATA_READ))])
 def status(ctx: CurrentUser, db: Db) -> dict:
     parties = list(
         db.scalars(select(Party).where(Party.business_id == ctx.business.id).order_by(Party.name))
@@ -51,7 +52,7 @@ def status(ctx: CurrentUser, db: Db) -> dict:
     }
 
 
-@router.post("/parse-text")
+@router.post("/parse-text", dependencies=[Depends(require(P.DATA_READ))])
 def parse_text(body: ParseTextInput, ctx: CurrentUser, db: Db) -> dict:
     try:
         return {"draft": draft_from_text(db, ctx.business.id, body.text)}
@@ -59,7 +60,7 @@ def parse_text(body: ParseTextInput, ctx: CurrentUser, db: Db) -> dict:
         raise HTTPException(status_code=400, detail=str(err)) from err
 
 
-@router.post("/parse-image")
+@router.post("/parse-image", dependencies=[Depends(require(P.DATA_READ))])
 async def parse_image(ctx: CurrentUser, db: Db, file: UploadFile = File(...)) -> dict:
     raw = await file.read()
     if len(raw) > MAX_IMAGE_BYTES:
@@ -76,7 +77,7 @@ async def parse_image(ctx: CurrentUser, db: Db, file: UploadFile = File(...)) ->
         raise HTTPException(status_code=502, detail=str(err)) from err
 
 
-@router.post("/publish")
+@router.post("/publish", dependencies=[Depends(require(P.TXN_WRITE))])
 def publish(payload: dict[str, Any], ctx: CurrentUser, db: Db) -> dict:
     try:
         result = publish_draft(db, ctx.business.id, payload)

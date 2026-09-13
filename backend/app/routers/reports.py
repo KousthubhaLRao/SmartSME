@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import select
 
 from .. import serializers as ser
 from ..analytics import get_revenue_series, load_overview
-from ..core.deps import CurrentUser, Db
+from ..core.deps import CurrentUser, Db, require
+from ..core.roles import P
 from ..models import Party, Purchase, Sale
 from ..reports import PERIOD_PRESETS, build_report, render_csv, render_pdf
 
@@ -17,7 +18,7 @@ ALLOWED_DAYS = {7, 30, 90, 180, 365}
 REPORT_TYPES = {"sales", "purchases", "expenses", "consolidated"}
 
 
-@router.get("/dashboard")
+@router.get("/dashboard", dependencies=[Depends(require(P.DATA_READ))])
 def dashboard(ctx: CurrentUser, db: Db) -> dict:
     overview = load_overview(db, ctx.business.id, 14)
 
@@ -48,13 +49,13 @@ def dashboard(ctx: CurrentUser, db: Db) -> dict:
     }
 
 
-@router.get("/reports/overview")
+@router.get("/reports/overview", dependencies=[Depends(require(P.DATA_READ))])
 def reports_overview(ctx: CurrentUser, db: Db) -> dict:
     overview = load_overview(db, ctx.business.id, 14)
     return {**overview, "currency": ctx.business.currency}
 
 
-@router.get("/reports/revenue")
+@router.get("/reports/revenue", dependencies=[Depends(require(P.DATA_READ))])
 def revenue(ctx: CurrentUser, db: Db, days: int = Query(30)) -> dict:
     d = days if days in ALLOWED_DAYS else 30
     series = get_revenue_series(db, ctx.business.id, d)
@@ -75,7 +76,7 @@ def _build(ctx, db, type_: str, preset: str, date_from: str | None, date_to: str
     )
 
 
-@router.get("/reports/preview")
+@router.get("/reports/preview", dependencies=[Depends(require(P.DATA_READ))])
 def preview(
     ctx: CurrentUser,
     db: Db,
@@ -108,7 +109,7 @@ def preview(
     }
 
 
-@router.get("/reports/download")
+@router.get("/reports/download", dependencies=[Depends(require(P.DATA_READ))])
 def download(
     ctx: CurrentUser,
     db: Db,

@@ -18,9 +18,48 @@ export class ApiError extends Error {
 }
 
 export const isUnauthorized = (e: unknown) => e instanceof ApiError && e.status === 401;
+export const isForbidden = (e: unknown) => e instanceof ApiError && e.status === 403;
+
+/**
+ * The business a superuser or admin is currently looking at.
+ *
+ * Platform accounts belong to no business, so the API needs to be told which
+ * one every tenant request is for. Keeping it here means the page components
+ * never have to thread it through. It stays null for owners and employees,
+ * who are pinned to their own business server-side.
+ */
+const ACTIVE_BUSINESS_KEY = "smartsme-active-business";
+let activeBusinessId: string | null = null;
+
+export function setActiveBusiness(id: string | null) {
+  activeBusinessId = id;
+  try {
+    if (id) localStorage.setItem(ACTIVE_BUSINESS_KEY, id);
+    else localStorage.removeItem(ACTIVE_BUSINESS_KEY);
+  } catch {
+    /* private browsing: the choice just will not survive a reload */
+  }
+}
+
+export function getActiveBusiness(): string | null {
+  if (activeBusinessId) return activeBusinessId;
+  try {
+    activeBusinessId = localStorage.getItem(ACTIVE_BUSINESS_KEY);
+  } catch {
+    activeBusinessId = null;
+  }
+  return activeBusinessId;
+}
+
+function withBusiness(path: string): string {
+  const id = getActiveBusiness();
+  if (!id || path.startsWith("/auth/") || path.startsWith("/businesses")) return path;
+  return `${path}${path.includes("?") ? "&" : "?"}businessId=${encodeURIComponent(id)}`;
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path.startsWith("/api") ? path : `/api${path}`, {
+  const url = withBusiness(path);
+  const res = await fetch(url.startsWith("/api") ? url : `/api${url}`, {
     credentials: "include",
     headers: init?.body ? { "Content-Type": "application/json" } : undefined,
     ...init,
@@ -68,7 +107,8 @@ export const api = {
   },
   /** Streams a file download (report PDF/CSV) straight to the browser. */
   download: async (path: string) => {
-    const res = await fetch(path.startsWith("/api") ? path : `/api${path}`, {
+    const target = withBusiness(path);
+    const res = await fetch(target.startsWith("/api") ? target : `/api${target}`, {
       credentials: "include",
     });
     if (!res.ok) {
@@ -147,12 +187,12 @@ export function useMutation() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const run = useCallback(async (fn: () => Promise<unknown>, onDone?: () => void) => {
+  const run = useCallback(async <T>(fn: () => Promise<T>, onDone?: (result: T) => void) => {
     setPending(true);
     setError(null);
     try {
-      await fn();
-      onDone?.();
+      const result = await fn();
+      onDone?.(result);
       return true;
     } catch (e) {
       if (isUnauthorized(e)) {

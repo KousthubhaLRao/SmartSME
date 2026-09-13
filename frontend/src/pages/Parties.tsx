@@ -11,6 +11,7 @@ import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { Icon } from "@/components/Icon";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { COUNTRIES, flagEmoji, splitPhone } from "@/lib/countries";
+import { Can, PERMISSIONS } from "@/lib/session";
 import { cn, formatDate, money, round2 } from "@/lib/utils";
 
 interface OutstandingDoc {
@@ -81,9 +82,11 @@ export function Parties() {
   return (
     <div className="space-y-6">
       <PageHeader title="Parties" description="Customers and suppliers, with outstanding balances.">
-        <Button onClick={() => setCreating(true)}>
-          <Icon name="plus" size={16} /> New party
-        </Button>
+        <Can do={PERMISSIONS.catalogWrite}>
+          <Button onClick={() => setCreating(true)}>
+            <Icon name="plus" size={16} /> New party
+          </Button>
+        </Can>
       </PageHeader>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -125,6 +128,7 @@ export function Parties() {
           <div className="flex flex-wrap items-center gap-2">
             {showReceivables && (
               <ConfirmButton
+                needs={PERMISSIONS.dataManage}
                 action={() => api.post("/parties/settle-all/receivable")}
                 title="Mark all receivables as paid?"
                 message={`Every outstanding customer invoice (${money(data.stats.receivable, cur)}) will be marked fully paid and balances cleared.`}
@@ -137,6 +141,7 @@ export function Parties() {
             )}
             {showPayables && (
               <ConfirmButton
+                needs={PERMISSIONS.dataManage}
                 action={() => api.post("/parties/settle-all/payable")}
                 title="Mark all payables as paid?"
                 message={`Every outstanding supplier bill (${money(data.stats.payable, cur)}) will be marked fully paid and balances cleared.`}
@@ -242,6 +247,7 @@ export function Parties() {
                         <div className="flex items-center justify-end gap-1">
                           {canSettle && (
                             <ConfirmButton
+                              needs={PERMISSIONS.dataManage}
                               action={() => api.post(`/parties/${p.id}/settle`)}
                               title={isCustomer ? "Mark invoices as paid?" : "Pay all bills?"}
                               message={`${p.outstanding.length} outstanding ${isCustomer ? "invoice" : "bill"}${
@@ -262,6 +268,7 @@ export function Parties() {
                             <Icon name="edit" size={16} />
                           </button>
                           <ConfirmButton
+                            needs={PERMISSIONS.dataManage}
                             action={() => api.del(`/parties/${p.id}`)}
                             title="Delete party?"
                             message={`"${p.name}" will be removed. Their past transactions are kept but unlinked.`}

@@ -4,6 +4,7 @@ import { Button } from "./ui/button";
 import { Field, Input } from "./ui/input";
 import { Icon } from "./Icon";
 import { useMutation } from "@/lib/api";
+import { useCan, type Permission } from "@/lib/session";
 import { formatDate, toDateInputValue } from "@/lib/utils";
 
 /**
@@ -15,15 +16,21 @@ export function EditDateButton({
   onSave,
   label = "Change date",
   onDone,
+  needs,
 }: {
   date: string;
   onSave: (isoDate: string) => Promise<unknown>;
   label?: string;
   onDone?: () => void;
+  /** Hide the control when the session may not amend documents. */
+  needs?: Permission;
 }) {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState(() => toDateInputValue(date));
   const { run, pending, error } = useMutation();
+  const can = useCan();
+  // After the hooks: an early return above them would break the hook order.
+  const allowed = !needs || can(needs);
 
   function openDialog() {
     setValue(toDateInputValue(date));
@@ -39,6 +46,8 @@ export function EditDateButton({
       },
     );
   }
+
+  if (!allowed) return null;
 
   return (
     <>

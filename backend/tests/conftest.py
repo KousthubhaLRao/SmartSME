@@ -152,14 +152,154 @@ def workspace(client) -> dict[str, Any]:
 
 @pytest.fixture
 def fresh_client(anon):
-    """A TestClient with its own cookie jar, for tests that sign in or out
-    without disturbing the session-scoped `client`."""
+    """A TestClient with its own cookie jar and its own apparent IP, for tests
+    that sign in or out without disturbing the session-scoped `client`."""
+    with _new_client() as c:
+        yield c
+
+
+# ---------------------------------------------------------------------------
+# Roles
+#
+# Platform accounts are created straight in the database because there is no
+# HTTP route that mints one — that is the point of them.
+# ---------------------------------------------------------------------------
+PLATFORM_PASSWORD = "platform-password-1234"
+
+
+def _new_client():
+    """A TestClient with its own cookie jar and its own apparent IP address.
+
+    The per-IP half of the sign-in throttle counts failures across every
+    account, so without a distinct address one test's wrong passwords would
+    start locking out the next one's.
+    """
     from fastapi.testclient import TestClient
 
     from app.main import app
 
-    with TestClient(app) as c:
-        yield c
+    return TestClient(
+        app,
+        headers={"X-Forwarded-For": f"10.0.0.{uuid.uuid4().int % 254 + 1}.{uuid.uuid4().hex[:6]}"},
+    )
+
+
+def _create_platform_user(role: str) -> dict[str, str]:
+    from app.core.db import SessionLocal
+    from app.core.security import hash_password
+    from app.models import User
+
+    email = f"{role}-{uuid.uuid4().hex[:10]}@smoketest.dev"
+    with SessionLocal() as db:
+        db.add(
+            User(
+                business_id=None,
+                email=email,
+                name=role.title(),
+                password_hash=hash_password(PLATFORM_PASSWORD),
+                role=role,
+            )
+        )
+        db.commit()
+    return {"email": email, "password": PLATFORM_PASSWORD}
+
+
+def _signed_in(credentials: dict[str, str]):
+    client = _new_client()
+    client.__enter__()
+    r = client.post("/api/auth/sign-in", json=credentials)
+    assert r.status_code == 200, r.text
+    return client
+
+
+@pytest.fixture(scope="session")
+def business_id(client) -> str:
+    """The business the session-scoped `client` owns."""
+    return client.get("/api/auth/me").json()["business"]["id"]
+
+
+@pytest.fixture(scope="session")
+def other_business_id(anon) -> str:
+    """A second tenant, to prove one business cannot reach another."""
+    with _new_client() as c:
+        r = c.post(
+            "/api/auth/sign-up",
+            json={
+                "businessName": "Neighbouring Traders",
+                "name": "Other Owner",
+                "email": f"other-{uuid.uuid4().hex[:10]}@smoketest.dev",
+                "password": "other1234",
+            },
+        )
+        assert r.status_code == 201, r.text
+        return r.json()["business"]["id"]
+
+
+@pytest.fixture(scope="session")
+def superuser_client(anon):
+    c = _signed_in(_create_platform_user("superuser"))
+    yield c
+    c.__exit__(None, None, None)
+
+
+@pytest.fixture(scope="session")
+def admin_client(anon):
+    c = _signed_in(_create_platform_user("admin"))
+    yield c
+    c.__exit__(None, None, None)
+
+
+@pytest.fixture(scope="session")
+def employee_client(client):
+    """An employee of the same business as `client`, joined by invitation."""
+    email = f"employee-{uuid.uuid4().hex[:10]}@smoketest.dev"
+    password = "employee1234"
+    invite = client.post("/api/users/invites", json={"email": email, "role": "employee"})
+    assert invite.status_code == 201, invite.text
+
+    c = _new_client()
+    c.__enter__()
+    accepted = c.post(
+        "/api/auth/accept-invite",
+        json={"token": invite.json()["token"], "name": "Shop Assistant", "password": password},
+    )
+    assert accepted.status_code == 201, accepted.text
+    yield c
+    c.__exit__(None, None, None)
+
+
+@pytest.fixture
+def throttled_owner(anon) -> dict[str, str]:
+    """A throwaway owner, so each throttle test starts with a clean streak."""
+    password = "owner-password-1234"
+    with _new_client() as c:
+        r = c.post(
+            "/api/auth/sign-up",
+            json={
+                "businessName": "Throttle Traders",
+                "name": "Throttle Owner",
+                "email": f"throttle-{uuid.uuid4().hex[:10]}@smoketest.dev",
+                "password": password,
+            },
+        )
+        assert r.status_code == 201, r.text
+        return {"email": r.json()["user"]["email"], "password": password}
+
+
+@pytest.fixture
+def throttled_employee(client) -> dict[str, str]:
+    """A throwaway employee, to show the exemption."""
+    email = f"exempt-{uuid.uuid4().hex[:10]}@smoketest.dev"
+    password = "employee-password-1234"
+    invite = client.post("/api/users/invites", json={"email": email, "role": "employee"})
+    assert invite.status_code == 201, invite.text
+    with _new_client() as c:
+        accepted = c.post(
+            "/api/auth/accept-invite",
+            json={"token": invite.json()["token"], "name": "Exempt", "password": password},
+        )
+        assert accepted.status_code == 201, accepted.text
+    return {"email": email, "password": password}
 
 
 # ---------------------------------------------------------------------------
@@ -174,6 +314,7 @@ def fresh_client(anon):
 GROUP_NAMES = {
     "tests/test_domain.py": "Domain units",
     "tests/test_api_smoke.py": "Endpoint smoke",
+    "tests/test_rbac.py": "Roles & throttle",
 }
 
 OUTCOMES = ("passed", "failed", "error", "skipped", "xfailed", "xpassed")

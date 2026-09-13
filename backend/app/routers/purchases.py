@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 
 from .. import serializers as ser
-from ..core.deps import CurrentUser, Db
+from ..core.deps import CurrentUser, Db, require
+from ..core.roles import P
 from ..core.utils import parse_date_input, round2
 from ..domain import purchases as purchases_domain
 from ..domain.payments import record_payment
@@ -19,7 +20,7 @@ from ..worker import drain_queue
 router = APIRouter(prefix="/api/purchases", tags=["purchases"])
 
 
-@router.get("")
+@router.get("", dependencies=[Depends(require(P.DATA_READ))])
 def list_purchases(ctx: CurrentUser, db: Db) -> dict:
     rows = list(
         db.execute(
@@ -56,7 +57,7 @@ def list_purchases(ctx: CurrentUser, db: Db) -> dict:
     }
 
 
-@router.post("", status_code=201)
+@router.post("", status_code=201, dependencies=[Depends(require(P.TXN_WRITE))])
 def create_purchase(body: PurchaseInput, ctx: CurrentUser, db: Db) -> dict:
     try:
         purchase = purchases_domain.create_purchase(db, ctx.business.id, body)
@@ -66,7 +67,7 @@ def create_purchase(body: PurchaseInput, ctx: CurrentUser, db: Db) -> dict:
     return {"id": str(purchase.id), "referenceNumber": purchase.reference_number}
 
 
-@router.get("/{purchase_id}")
+@router.get("/{purchase_id}", dependencies=[Depends(require(P.DATA_READ))])
 def get_purchase(purchase_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
     pur = db.scalar(
         select(Purchase).where(Purchase.id == purchase_id, Purchase.business_id == ctx.business.id)
@@ -78,7 +79,7 @@ def get_purchase(purchase_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
     return ser.purchase_detail(pur, party, items)
 
 
-@router.post("/{purchase_id}/payment")
+@router.post("/{purchase_id}/payment", dependencies=[Depends(require(P.TXN_WRITE))])
 def pay_purchase(purchase_id: uuid.UUID, body: PaymentInput, ctx: CurrentUser, db: Db) -> dict:
     try:
         record_payment(db, ctx.business.id, purchase_id=purchase_id, amount=body.amount)
@@ -87,13 +88,13 @@ def pay_purchase(purchase_id: uuid.UUID, body: PaymentInput, ctx: CurrentUser, d
     return {"ok": True}
 
 
-@router.post("/{purchase_id}/cancel")
+@router.post("/{purchase_id}/cancel", dependencies=[Depends(require(P.DATA_MANAGE))])
 def cancel_purchase(purchase_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
     purchases_domain.cancel_purchase(db, ctx.business.id, purchase_id)
     return {"ok": True}
 
 
-@router.patch("/{purchase_id}/date")
+@router.patch("/{purchase_id}/date", dependencies=[Depends(require(P.DATA_MANAGE))])
 def set_purchase_date(purchase_id: uuid.UUID, body: DateInput, ctx: CurrentUser, db: Db) -> dict:
     date = parse_date_input(body.date)
     if date is None:

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { Icon } from "@/components/Icon";
+import { Can, PERMISSIONS } from "@/lib/session";
 
 interface SettingsData {
   business: {
@@ -126,9 +127,11 @@ export function Settings() {
                 <Icon name="check" size={15} /> Saved
               </span>
             )}
-            <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : "Save changes"}
-            </Button>
+            <Can do={PERMISSIONS.configWrite}>
+              <Button type="submit" disabled={pending}>
+                {pending ? "Saving…" : "Save changes"}
+              </Button>
+            </Can>
           </div>
         </form>
       </SectionCard>

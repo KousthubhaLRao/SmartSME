@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 
 from .. import serializers as ser
 from ..ai.client import ai_status
-from ..core.deps import CurrentUser, Db
+from ..core.deps import CurrentUser, Db, require
+from ..core.roles import P
 from ..events import EVENT_LABELS, EVENT_TYPES
 from ..models import Event, Notification, WorkflowExecution, WorkflowRule
 from ..schemas import RuleInput, SettingsInput
@@ -21,7 +22,7 @@ router = APIRouter(prefix="/api", tags=["ops"])
 # ---------------------------------------------------------------------------
 # Workflow
 # ---------------------------------------------------------------------------
-@router.get("/workflow")
+@router.get("/workflow", dependencies=[Depends(require(P.DATA_READ))])
 def get_workflow(ctx: CurrentUser, db: Db) -> dict:
     rules = list(
         db.scalars(
@@ -47,7 +48,7 @@ def get_workflow(ctx: CurrentUser, db: Db) -> dict:
     }
 
 
-@router.post("/workflow/rules", status_code=201)
+@router.post("/workflow/rules", status_code=201, dependencies=[Depends(require(P.CONFIG_WRITE))])
 def create_rule(body: RuleInput, ctx: CurrentUser, db: Db) -> dict:
     if body.eventType not in EVENT_TYPES:
         raise HTTPException(status_code=400, detail="Unknown event type.")
@@ -69,7 +70,7 @@ def create_rule(body: RuleInput, ctx: CurrentUser, db: Db) -> dict:
     return ser.workflow_rule(rule)
 
 
-@router.put("/workflow/rules/{rule_id}")
+@router.put("/workflow/rules/{rule_id}", dependencies=[Depends(require(P.CONFIG_WRITE))])
 def update_rule(rule_id: uuid.UUID, body: RuleInput, ctx: CurrentUser, db: Db) -> dict:
     rule = db.scalar(
         select(WorkflowRule).where(
@@ -90,7 +91,7 @@ def update_rule(rule_id: uuid.UUID, body: RuleInput, ctx: CurrentUser, db: Db) -
     return ser.workflow_rule(rule)
 
 
-@router.post("/workflow/rules/{rule_id}/toggle")
+@router.post("/workflow/rules/{rule_id}/toggle", dependencies=[Depends(require(P.CONFIG_WRITE))])
 def toggle_rule(rule_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
     rule = db.scalar(
         select(WorkflowRule).where(
@@ -104,7 +105,7 @@ def toggle_rule(rule_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
     return {"id": str(rule.id), "enabled": rule.enabled}
 
 
-@router.delete("/workflow/rules/{rule_id}")
+@router.delete("/workflow/rules/{rule_id}", dependencies=[Depends(require(P.CONFIG_WRITE))])
 def delete_rule(rule_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
     rule = db.scalar(
         select(WorkflowRule).where(
@@ -125,7 +126,7 @@ def delete_rule(rule_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
 # ---------------------------------------------------------------------------
 # Event bus
 # ---------------------------------------------------------------------------
-@router.get("/events")
+@router.get("/events", dependencies=[Depends(require(P.DATA_READ))])
 def list_events(ctx: CurrentUser, db: Db, status: str | None = Query(None)) -> dict:
     stmt = select(Event).where(Event.business_id == ctx.business.id)
     if status:
@@ -151,7 +152,7 @@ def list_events(ctx: CurrentUser, db: Db, status: str | None = Query(None)) -> d
     }
 
 
-@router.post("/events/{event_id}/replay")
+@router.post("/events/{event_id}/replay", dependencies=[Depends(require(P.EVENTS_OPERATE))])
 def replay_event(event_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
     event = db.scalar(
         select(Event).where(Event.id == event_id, Event.business_id == ctx.business.id)
@@ -167,7 +168,7 @@ def replay_event(event_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
     return {"ok": True}
 
 
-@router.post("/events/drain")
+@router.post("/events/drain", dependencies=[Depends(require(P.EVENTS_OPERATE))])
 def drain(ctx: CurrentUser) -> dict:
     """Process anything still pending (also useful as a cron target)."""
     return {"processed": drain_queue()}
@@ -176,7 +177,7 @@ def drain(ctx: CurrentUser) -> dict:
 # ---------------------------------------------------------------------------
 # Notifications
 # ---------------------------------------------------------------------------
-@router.get("/notifications")
+@router.get("/notifications", dependencies=[Depends(require(P.DATA_READ))])
 def list_notifications(ctx: CurrentUser, db: Db) -> dict:
     rows = list(
         db.scalars(
@@ -194,7 +195,7 @@ def list_notifications(ctx: CurrentUser, db: Db) -> dict:
     return {"rows": [ser.notification(n) for n in rows], "unread": unread or 0}
 
 
-@router.get("/notifications/unread-count")
+@router.get("/notifications/unread-count", dependencies=[Depends(require(P.DATA_READ))])
 def unread_count(ctx: CurrentUser, db: Db) -> dict:
     n = db.scalar(
         select(func.count(Notification.id)).where(
@@ -204,7 +205,7 @@ def unread_count(ctx: CurrentUser, db: Db) -> dict:
     return {"unread": n or 0}
 
 
-@router.post("/notifications/{notification_id}/read")
+@router.post("/notifications/{notification_id}/read", dependencies=[Depends(require(P.DATA_READ))])
 def mark_read(notification_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
     n = db.scalar(
         select(Notification).where(
@@ -218,7 +219,7 @@ def mark_read(notification_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
     return {"ok": True}
 
 
-@router.post("/notifications/read-all")
+@router.post("/notifications/read-all", dependencies=[Depends(require(P.DATA_READ))])
 def mark_all_read(ctx: CurrentUser, db: Db) -> dict:
     for n in db.scalars(
         select(Notification).where(
@@ -233,7 +234,7 @@ def mark_all_read(ctx: CurrentUser, db: Db) -> dict:
 # ---------------------------------------------------------------------------
 # Settings
 # ---------------------------------------------------------------------------
-@router.get("/settings")
+@router.get("/settings", dependencies=[Depends(require(P.DATA_READ))])
 def get_settings(ctx: CurrentUser) -> dict:
     b = ctx.business
     return {
@@ -252,7 +253,7 @@ def get_settings(ctx: CurrentUser) -> dict:
     }
 
 
-@router.put("/settings")
+@router.put("/settings", dependencies=[Depends(require(P.CONFIG_WRITE))])
 def update_settings(body: SettingsInput, ctx: CurrentUser, db: Db) -> dict:
     if not body.name.strip():
         raise HTTPException(status_code=400, detail="Business name is required.")

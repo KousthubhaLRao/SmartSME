@@ -17,3 +17,18 @@ class SignUpInput(BaseModel):
     name: str
     email: EmailStr
     password: str
+
+
+class InviteInput(BaseModel):
+    """An invitation an owner hands out. `role` must be owner or employee."""
+
+    email: EmailStr
+    role: str = "employee"
+
+
+class AcceptInviteInput(BaseModel):
+    """Turning an invitation into an account."""
+
+    token: str
+    name: str
+    password: str

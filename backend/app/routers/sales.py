@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 
 from .. import serializers as ser
-from ..core.deps import CurrentUser, Db
+from ..core.deps import CurrentUser, Db, require
+from ..core.roles import P
 from ..core.utils import parse_date_input, round2
 from ..domain import sales as sales_domain
 from ..domain.payments import record_payment
@@ -19,7 +20,7 @@ from ..worker import drain_queue
 router = APIRouter(prefix="/api/sales", tags=["sales"])
 
 
-@router.get("")
+@router.get("", dependencies=[Depends(require(P.DATA_READ))])
 def list_sales(ctx: CurrentUser, db: Db) -> dict:
     rows = list(
         db.execute(
@@ -56,7 +57,7 @@ def list_sales(ctx: CurrentUser, db: Db) -> dict:
     }
 
 
-@router.post("", status_code=201)
+@router.post("", status_code=201, dependencies=[Depends(require(P.TXN_WRITE))])
 def create_sale(body: SaleInput, ctx: CurrentUser, db: Db) -> dict:
     try:
         sale = sales_domain.create_sale(db, ctx.business.id, body)
@@ -67,7 +68,7 @@ def create_sale(body: SaleInput, ctx: CurrentUser, db: Db) -> dict:
     return {"id": str(sale.id), "invoiceNumber": sale.invoice_number}
 
 
-@router.get("/{sale_id}")
+@router.get("/{sale_id}", dependencies=[Depends(require(P.DATA_READ))])
 def get_sale(sale_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
     sale = db.scalar(select(Sale).where(Sale.id == sale_id, Sale.business_id == ctx.business.id))
     if sale is None:
@@ -84,7 +85,7 @@ def get_sale(sale_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
     return detail
 
 
-@router.post("/{sale_id}/payment")
+@router.post("/{sale_id}/payment", dependencies=[Depends(require(P.TXN_WRITE))])
 def pay_sale(sale_id: uuid.UUID, body: PaymentInput, ctx: CurrentUser, db: Db) -> dict:
     try:
         record_payment(db, ctx.business.id, sale_id=sale_id, amount=body.amount)
@@ -93,13 +94,13 @@ def pay_sale(sale_id: uuid.UUID, body: PaymentInput, ctx: CurrentUser, db: Db) -
     return {"ok": True}
 
 
-@router.post("/{sale_id}/cancel")
+@router.post("/{sale_id}/cancel", dependencies=[Depends(require(P.DATA_MANAGE))])
 def cancel_sale(sale_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
     sales_domain.cancel_sale(db, ctx.business.id, sale_id)
     return {"ok": True}
 
 
-@router.patch("/{sale_id}/date")
+@router.patch("/{sale_id}/date", dependencies=[Depends(require(P.DATA_MANAGE))])
 def set_sale_date(sale_id: uuid.UUID, body: DateInput, ctx: CurrentUser, db: Db) -> dict:
     date = parse_date_input(body.date)
     if date is None:

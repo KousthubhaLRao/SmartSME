@@ -8,7 +8,7 @@ from datetime import datetime
 from sqlalchemy import Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from .base import Base, business_fk, money, pk, timestamp
+from .base import Base, fk, money, pk, timestamp
 
 
 class Business(Base):
@@ -35,11 +35,14 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[uuid.UUID] = pk()
-    business_id: Mapped[uuid.UUID] = business_fk()
+    #: Null for the platform roles (superuser, admin), which belong to no single
+    #: business and reach one by naming it on the request.
+    business_id: Mapped[uuid.UUID | None] = fk("businesses.id", nullable=True)
     email: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    #: One of app.core.roles.ROLES.
     role: Mapped[str] = mapped_column(Text, nullable=False, default="owner", server_default="owner")
     created_at: Mapped[datetime] = timestamp()
 
-    business: Mapped[Business] = relationship(lazy="joined")
+    business: Mapped[Business | None] = relationship(lazy="joined")

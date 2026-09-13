@@ -21,6 +21,16 @@ class Settings(BaseSettings):
     cookie_secure: bool = False
     cookie_samesite: Literal["lax", "strict", "none"] = "lax"
 
+    # ---- Sign-in throttling -------------------------------------------------
+    #: Failures before an account is locked (employees are exempt).
+    login_max_attempts: int = 5
+    #: Minutes the first lock lasts; each further block of failures doubles it.
+    login_lock_minutes: int = 15
+    #: Sliding window for the per-IP limit.
+    login_window_minutes: int = 15
+    #: Failed attempts one IP may make across all accounts in that window.
+    login_max_ip_attempts: int = 20
+
     # ---- Frontend / CORS ----------------------------------------------------
     # Comma-separated list of allowed browser origins.
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
