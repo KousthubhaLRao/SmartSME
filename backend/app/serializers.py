@@ -191,7 +191,9 @@ def notification(n: Notification) -> dict:
     }
 
 
-def event(e: Event) -> dict:
+def event(e: Event, actor: str | None = None) -> dict:
+    """`actor` is the author's name, resolved by the caller in one query rather
+    than a lookup per row."""
     return {
         "id": str(e.id),
         "type": e.type,
@@ -199,6 +201,7 @@ def event(e: Event) -> dict:
         "status": e.status,
         "retryCount": e.retry_count,
         "error": e.error,
+        "actor": actor,
         "createdAt": e.created_at.isoformat(),
         "processedAt": e.processed_at.isoformat() if e.processed_at else None,
     }

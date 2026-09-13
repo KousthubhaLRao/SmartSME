@@ -39,7 +39,12 @@ def calculate_purchase_totals(
     )
 
 
-def create_purchase(db: Session, business_id: uuid.UUID, data: PurchaseInput) -> Purchase:
+def create_purchase(
+    db: Session,
+    business_id: uuid.UUID,
+    data: PurchaseInput,
+    actor_id: uuid.UUID | None = None,
+) -> Purchase:
     items = clean_line_items(data.items)
     party_id = assert_party_owned(db, business_id, data.partyId)
     # Rejects any productId that does not belong to the business before it can
@@ -102,7 +107,7 @@ def create_purchase(db: Session, business_id: uuid.UUID, data: PurchaseInput) ->
             )
         )
 
-    publish(db, business_id, "PURCHASE_CREATED", {"purchaseId": str(purchase.id)})
+    publish(db, business_id, "PURCHASE_CREATED", {"purchaseId": str(purchase.id)}, actor_id)
     db.commit()
     db.refresh(purchase)
     return purchase

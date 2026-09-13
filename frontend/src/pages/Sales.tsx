@@ -4,6 +4,7 @@ import { api, useApi, useMutation } from "@/lib/api";
 import { PageHeader, PageState, StatCard, EmptyState, Skeleton } from "@/components/ui/misc";
 import { Card } from "@/components/ui/card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { Pagination, type PageInfo } from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
@@ -32,6 +33,7 @@ interface SaleRow {
 
 interface SalesData {
   rows: SaleRow[];
+  page: PageInfo;
   stats: { totalSales: number; receivable: number; count: number };
   products: EditorProduct[];
   customers: { id: string; name: string }[];
@@ -75,7 +77,8 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 export function Sales() {
-  const { data, loading, error, reload } = useApi<SalesData>("/sales");
+  const [page, setPage] = useState(1);
+  const { data, loading, error, reload } = useApi<SalesData>(`/sales?page=${page}`);
   const [openId, setOpenId] = useState<string | null>(null);
   const [detail, setDetail] = useState<SaleDetail | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
@@ -216,6 +219,7 @@ export function Sales() {
             </TBody>
           </Table>
         )}
+        {data?.page && <Pagination page={data.page} onChange={setPage} label="sales" />}
       </Card>
 
       {/* Detail modal */}

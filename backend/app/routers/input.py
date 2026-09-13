@@ -80,7 +80,7 @@ async def parse_image(ctx: CurrentUser, db: Db, file: UploadFile = File(...)) ->
 @router.post("/publish", dependencies=[Depends(require(P.TXN_WRITE))])
 def publish(payload: dict[str, Any], ctx: CurrentUser, db: Db) -> dict:
     try:
-        result = publish_draft(db, ctx.business.id, payload)
+        result = publish_draft(db, ctx.business.id, payload, ctx.user.id)
     except ValueError as err:
         raise HTTPException(status_code=400, detail=str(err)) from err
     drain_queue()

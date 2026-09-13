@@ -315,6 +315,8 @@ GROUP_NAMES = {
     "tests/test_domain.py": "Domain units",
     "tests/test_api_smoke.py": "Endpoint smoke",
     "tests/test_rbac.py": "Roles & throttle",
+    "tests/test_pagination.py": "Paging",
+    "tests/test_event_actor.py": "Event authors",
 }
 
 OUTCOMES = ("passed", "failed", "error", "skipped", "xfailed", "xpassed")

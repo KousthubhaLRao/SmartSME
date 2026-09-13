@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from .. import serializers as ser
 from ..core.deps import CurrentUser, Db, require
@@ -14,6 +14,7 @@ from ..core.utils import round2
 from ..domain import catalog
 from ..domain.payments import settle_all_outstanding, settle_party
 from ..models import Expense, Party, Product, Purchase, Sale, StockMovement
+from ..pagination import Paging, page_info, slice_of, total_for
 from ..schemas import ExpenseInput, PartyInput, ProductInput, StockAdjustInput
 from ..worker import drain_queue
 
@@ -24,13 +25,20 @@ router = APIRouter(prefix="/api", tags=["catalog"])
 # Products
 # ---------------------------------------------------------------------------
 @router.get("/products", dependencies=[Depends(require(P.DATA_READ))])
-def list_products(ctx: CurrentUser, db: Db) -> dict:
-    products = list(
-        db.scalars(
-            select(Product).where(Product.business_id == ctx.business.id).order_by(Product.name)
-        )
-    )
-    names = {p.id: p.name for p in products}
+def list_products(ctx: CurrentUser, db: Db, paging: Paging) -> dict:
+    listing = select(Product).where(Product.business_id == ctx.business.id).order_by(Product.name)
+    total = total_for(db, listing)
+    products = list(db.scalars(slice_of(listing, paging)))
+
+    # Aggregated over the whole catalogue, not just this page.
+    stats = db.execute(
+        select(
+            func.count(Product.id),
+            func.coalesce(func.sum(Product.stock * Product.purchase_price), 0.0),
+            func.count(Product.id).filter(Product.stock <= Product.low_stock_threshold),
+        ).where(Product.business_id == ctx.business.id)
+    ).one()
+
     movements = list(
         db.scalars(
             select(StockMovement)
@@ -39,13 +47,20 @@ def list_products(ctx: CurrentUser, db: Db) -> dict:
             .limit(40)
         )
     )
+    # Movement rows name products that may not be on this page.
+    names = dict(
+        db.execute(
+            select(Product.id, Product.name).where(Product.business_id == ctx.business.id)
+        ).all()
+    )
     return {
         "rows": [ser.product(p) for p in products],
+        "page": page_info(paging, total),
         "movements": [ser.stock_movement(m, names.get(m.product_id)) for m in movements],
         "stats": {
-            "count": len(products),
-            "inventoryValue": round2(sum(p.stock * p.purchase_price for p in products)),
-            "lowCount": sum(1 for p in products if p.stock <= p.low_stock_threshold),
+            "count": stats[0],
+            "inventoryValue": round2(stats[1]),
+            "lowCount": stats[2],
         },
         "currency": ctx.business.currency,
     }
@@ -72,7 +87,7 @@ def update_product(product_id: uuid.UUID, body: ProductInput, ctx: CurrentUser, 
 @router.post("/products/{product_id}/adjust", dependencies=[Depends(require(P.TXN_WRITE))])
 def adjust_stock(product_id: uuid.UUID, body: StockAdjustInput, ctx: CurrentUser, db: Db) -> dict:
     try:
-        catalog.adjust_stock(db, ctx.business.id, product_id, body.delta, body.note)
+        catalog.adjust_stock(db, ctx.business.id, product_id, body.delta, body.note, ctx.user.id)
     except ValueError as err:
         raise HTTPException(status_code=400, detail=str(err)) from err
     drain_queue()
@@ -92,19 +107,19 @@ def delete_product(product_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
 # Parties
 # ---------------------------------------------------------------------------
 @router.get("/parties", dependencies=[Depends(require(P.DATA_READ))])
-def list_parties(ctx: CurrentUser, db: Db) -> dict:
-    parties = list(
-        db.scalars(select(Party).where(Party.business_id == ctx.business.id).order_by(Party.name))
-    )
+def list_parties(ctx: CurrentUser, db: Db, paging: Paging) -> dict:
+    listing = select(Party).where(Party.business_id == ctx.business.id).order_by(Party.name)
+    total = total_for(db, listing)
+    parties = list(db.scalars(slice_of(listing, paging)))
+    page_ids = [p.id for p in parties]
 
-    # Outstanding invoices/bills, so each party row can be expanded to show what
-    # makes up its balance and settled in bulk.
+    # Outstanding invoices and bills, so a party row can be expanded to show
+    # what makes up its balance. Restricted to the parties actually on this
+    # page — this used to read every sale and purchase the business had.
     outstanding: dict[str, list[dict]] = {}
 
     def collect(rows, ref_attr: str) -> None:
         for row in rows:
-            if not row.party_id:
-                continue
             due = round2(row.total - row.amount_paid)
             if due <= 0.001:
                 continue
@@ -118,22 +133,33 @@ def list_parties(ctx: CurrentUser, db: Db) -> dict:
                 }
             )
 
-    collect(
-        db.scalars(
-            select(Sale)
-            .where(Sale.business_id == ctx.business.id, Sale.status != "cancelled")
-            .order_by(Sale.date.desc())
-        ),
-        "invoice_number",
-    )
-    collect(
-        db.scalars(
-            select(Purchase)
-            .where(Purchase.business_id == ctx.business.id, Purchase.status != "cancelled")
-            .order_by(Purchase.date.desc())
-        ),
-        "reference_number",
-    )
+    if page_ids:
+        for model, ref in ((Sale, "invoice_number"), (Purchase, "reference_number")):
+            collect(
+                db.scalars(
+                    select(model)
+                    .where(
+                        model.business_id == ctx.business.id,
+                        model.party_id.in_(page_ids),
+                        model.status != "cancelled",
+                        model.total > model.amount_paid,
+                    )
+                    .order_by(model.date.desc())
+                ),
+                ref,
+            )
+
+    # Balances cover every party, not just this page.
+    totals = db.execute(
+        select(
+            func.coalesce(
+                func.sum(Party.balance).filter(Party.type == "customer", Party.balance > 0), 0.0
+            ),
+            func.coalesce(
+                func.sum(Party.balance).filter(Party.type == "supplier", Party.balance > 0), 0.0
+            ),
+        ).where(Party.business_id == ctx.business.id)
+    ).one()
 
     rows = []
     for p in parties:
@@ -143,14 +169,8 @@ def list_parties(ctx: CurrentUser, db: Db) -> dict:
 
     return {
         "rows": rows,
-        "stats": {
-            "receivable": round2(
-                sum(p.balance for p in parties if p.type == "customer" and p.balance > 0)
-            ),
-            "payable": round2(
-                sum(p.balance for p in parties if p.type == "supplier" and p.balance > 0)
-            ),
-        },
+        "page": page_info(paging, total),
+        "stats": {"receivable": round2(totals[0]), "payable": round2(totals[1])},
         "currency": ctx.business.currency,
     }
 
@@ -199,27 +219,34 @@ def settle_all(kind: str, ctx: CurrentUser, db: Db) -> dict:
 # Expenses
 # ---------------------------------------------------------------------------
 @router.get("/expenses", dependencies=[Depends(require(P.DATA_READ))])
-def list_expenses(ctx: CurrentUser, db: Db) -> dict:
-    rows = list(
-        db.scalars(
-            select(Expense)
-            .where(Expense.business_id == ctx.business.id)
-            .order_by(Expense.date.desc())
-        )
+def list_expenses(ctx: CurrentUser, db: Db, paging: Paging) -> dict:
+    listing = (
+        select(Expense).where(Expense.business_id == ctx.business.id).order_by(Expense.date.desc())
     )
-    by_category: dict[str, float] = {}
-    for e in rows:
-        by_category[e.category] = round2(by_category.get(e.category, 0) + e.amount)
+    total = total_for(db, listing)
+    rows = list(db.scalars(slice_of(listing, paging)))
+
+    stats = db.execute(
+        select(
+            func.coalesce(func.sum(Expense.amount), 0.0),
+            func.count(Expense.id),
+            func.count(Expense.id).filter(Expense.flagged.is_not(None)),
+        ).where(Expense.business_id == ctx.business.id)
+    ).one()
+
+    # The category breakdown is a chart of everything, so it is grouped in SQL.
+    by_category = db.execute(
+        select(Expense.category, func.coalesce(func.sum(Expense.amount), 0.0))
+        .where(Expense.business_id == ctx.business.id)
+        .group_by(Expense.category)
+        .order_by(func.sum(Expense.amount).desc())
+    ).all()
+
     return {
         "rows": [ser.expense(e) for e in rows],
-        "stats": {
-            "total": round2(sum(e.amount for e in rows)),
-            "count": len(rows),
-            "flagged": sum(1 for e in rows if e.flagged),
-        },
-        "byCategory": [
-            {"label": k, "value": v} for k, v in sorted(by_category.items(), key=lambda kv: -kv[1])
-        ],
+        "page": page_info(paging, total),
+        "stats": {"total": round2(stats[0]), "count": stats[1], "flagged": stats[2]},
+        "byCategory": [{"label": c, "value": round2(v)} for c, v in by_category],
         "currency": ctx.business.currency,
     }
 
@@ -227,7 +254,7 @@ def list_expenses(ctx: CurrentUser, db: Db) -> dict:
 @router.post("/expenses", status_code=201, dependencies=[Depends(require(P.TXN_WRITE))])
 def create_expense(body: ExpenseInput, ctx: CurrentUser, db: Db) -> dict:
     try:
-        expense = catalog.create_expense(db, ctx.business.id, body)
+        expense = catalog.create_expense(db, ctx.business.id, body, ctx.user.id)
     except ValueError as err:
         raise HTTPException(status_code=400, detail=str(err)) from err
     drain_queue()

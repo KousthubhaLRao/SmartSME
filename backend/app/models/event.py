@@ -14,7 +14,7 @@ from sqlalchemy import DateTime, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from .base import Base, business_fk, count, pk, timestamp
+from .base import Base, business_fk, count, fk, pk, timestamp
 
 
 class Event(Base):
@@ -22,6 +22,9 @@ class Event(Base):
 
     id: Mapped[uuid.UUID] = pk()
     business_id: Mapped[uuid.UUID] = business_fk()
+    #: Who caused it. Null for events raised by the seed, by a cron drain, or by
+    #: a user who has since been removed from the team.
+    user_id: Mapped[uuid.UUID | None] = fk("users.id", ondelete="SET NULL", nullable=True)
     type: Mapped[str] = mapped_column(Text, nullable=False)
     payload: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     #: pending | processing | processed | failed

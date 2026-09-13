@@ -87,7 +87,12 @@ def update_product(
 
 
 def adjust_stock(
-    db: Session, business_id: uuid.UUID, product_id: uuid.UUID, delta: int, note: str
+    db: Session,
+    business_id: uuid.UUID,
+    product_id: uuid.UUID,
+    delta: int,
+    note: str,
+    actor_id: uuid.UUID | None = None,
 ) -> None:
     """A manual stock correction. Emits STOCK_UPDATED so low-stock re-evaluates."""
     if delta == 0:
@@ -114,7 +119,13 @@ def adjust_stock(
             note=note or "Manual adjustment",
         )
     )
-    publish(db, business_id, "STOCK_UPDATED", {"productId": str(product_id), "cause": "adjustment"})
+    publish(
+        db,
+        business_id,
+        "STOCK_UPDATED",
+        {"productId": str(product_id), "cause": "adjustment"},
+        actor_id,
+    )
     db.commit()
 
 
@@ -208,7 +219,12 @@ def delete_party(db: Session, business_id: uuid.UUID, party_id: uuid.UUID) -> No
 # ---------------------------------------------------------------------------
 
 
-def create_expense(db: Session, business_id: uuid.UUID, data: ExpenseInput) -> Expense:
+def create_expense(
+    db: Session,
+    business_id: uuid.UUID,
+    data: ExpenseInput,
+    actor_id: uuid.UUID | None = None,
+) -> Expense:
     if not data.description.strip():
         raise ValueError("Description is required.")
     if not data.amount > 0:
@@ -223,7 +239,7 @@ def create_expense(db: Session, business_id: uuid.UUID, data: ExpenseInput) -> E
     )
     db.add(expense)
     db.flush()
-    publish(db, business_id, "EXPENSE_ADDED", {"expenseId": str(expense.id)})
+    publish(db, business_id, "EXPENSE_ADDED", {"expenseId": str(expense.id)}, actor_id)
     db.commit()
     db.refresh(expense)
     return expense

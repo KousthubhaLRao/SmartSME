@@ -4,6 +4,7 @@ import { api, useApi, useMutation } from "@/lib/api";
 import { PageHeader, PageState, StatCard, EmptyState } from "@/components/ui/misc";
 import { Card } from "@/components/ui/card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { Pagination, type PageInfo } from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
@@ -36,6 +37,7 @@ interface PartyRow {
 
 interface PartiesData {
   rows: PartyRow[];
+  page: PageInfo;
   stats: { receivable: number; payable: number };
   currency: string;
 }
@@ -47,7 +49,8 @@ export function Parties() {
     return t === "customer" || t === "supplier" ? t : "all";
   })();
 
-  const { data, loading, error, reload } = useApi<PartiesData>("/parties");
+  const [page, setPage] = useState(1);
+  const { data, loading, error, reload } = useApi<PartiesData>(`/parties?page=${page}`);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<PartyRow | null>(null);
   const [creating, setCreating] = useState(false);
@@ -323,6 +326,7 @@ export function Parties() {
             </TBody>
           </Table>
         )}
+        {data?.page && <Pagination page={data.page} onChange={setPage} label="parties" />}
       </Card>
 
       <PartyDialog

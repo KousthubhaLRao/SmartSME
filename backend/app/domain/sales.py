@@ -42,7 +42,12 @@ def calculate_sale_totals(
     )
 
 
-def create_sale(db: Session, business_id: uuid.UUID, data: SaleInput) -> Sale:
+def create_sale(
+    db: Session,
+    business_id: uuid.UUID,
+    data: SaleInput,
+    actor_id: uuid.UUID | None = None,
+) -> Sale:
     """Write the sale rows AND the SALE_CREATED event in one transaction.
 
     The worker then applies inventory and the customer's balance.
@@ -129,7 +134,7 @@ def create_sale(db: Session, business_id: uuid.UUID, data: SaleInput) -> Sale:
             )
         )
 
-    publish(db, business_id, "SALE_CREATED", {"saleId": str(sale.id)})
+    publish(db, business_id, "SALE_CREATED", {"saleId": str(sale.id)}, actor_id)
     db.commit()
     db.refresh(sale)
     return sale

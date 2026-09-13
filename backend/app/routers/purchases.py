@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from .. import serializers as ser
 from ..core.deps import CurrentUser, Db, require
@@ -14,6 +14,7 @@ from ..core.utils import parse_date_input, round2
 from ..domain import purchases as purchases_domain
 from ..domain.payments import record_payment
 from ..models import Party, Product, Purchase, PurchaseItem
+from ..pagination import Paging, page_info, slice_of, total_for
 from ..schemas import DateInput, PaymentInput, PurchaseInput
 from ..worker import drain_queue
 
@@ -21,16 +22,25 @@ router = APIRouter(prefix="/api/purchases", tags=["purchases"])
 
 
 @router.get("", dependencies=[Depends(require(P.DATA_READ))])
-def list_purchases(ctx: CurrentUser, db: Db) -> dict:
-    rows = list(
-        db.execute(
-            select(Purchase, Party.name)
-            .join(Party, Purchase.party_id == Party.id, isouter=True)
-            .where(Purchase.business_id == ctx.business.id)
-            .order_by(Purchase.date.desc())
-        ).all()
+def list_purchases(ctx: CurrentUser, db: Db, paging: Paging) -> dict:
+    listing = (
+        select(Purchase, Party.name)
+        .join(Party, Purchase.party_id == Party.id, isouter=True)
+        .where(Purchase.business_id == ctx.business.id)
+        .order_by(Purchase.date.desc())
     )
-    active = [p for p, _ in rows if p.status != "cancelled"]
+    total = total_for(db, listing)
+    rows = list(db.execute(slice_of(listing, paging)).all())
+
+    # Aggregated over every purchase, not just this page.
+    stats = db.execute(
+        select(
+            func.coalesce(func.sum(Purchase.total), 0.0),
+            func.coalesce(func.sum(Purchase.total - Purchase.amount_paid), 0.0),
+            func.count(Purchase.id),
+        ).where(Purchase.business_id == ctx.business.id, Purchase.status != "cancelled")
+    ).one()
+
     products = list(
         db.scalars(
             select(Product).where(Product.business_id == ctx.business.id).order_by(Product.name)
@@ -45,10 +55,11 @@ def list_purchases(ctx: CurrentUser, db: Db) -> dict:
     )
     return {
         "rows": [ser.purchase_row(p, name) for p, name in rows],
+        "page": page_info(paging, total),
         "stats": {
-            "totalPurchases": round2(sum(p.total for p in active)),
-            "payable": round2(sum(p.total - p.amount_paid for p in active)),
-            "count": len(active),
+            "totalPurchases": round2(stats[0]),
+            "payable": round2(stats[1]),
+            "count": stats[2],
         },
         "products": [ser.product(p) for p in products],
         "suppliers": [{"id": str(s.id), "name": s.name} for s in suppliers],
@@ -60,7 +71,7 @@ def list_purchases(ctx: CurrentUser, db: Db) -> dict:
 @router.post("", status_code=201, dependencies=[Depends(require(P.TXN_WRITE))])
 def create_purchase(body: PurchaseInput, ctx: CurrentUser, db: Db) -> dict:
     try:
-        purchase = purchases_domain.create_purchase(db, ctx.business.id, body)
+        purchase = purchases_domain.create_purchase(db, ctx.business.id, body, ctx.user.id)
     except ValueError as err:
         raise HTTPException(status_code=400, detail=str(err)) from err
     drain_queue()

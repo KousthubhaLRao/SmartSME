@@ -12,7 +12,8 @@ from ..ai.client import ai_status
 from ..core.deps import CurrentUser, Db, require
 from ..core.roles import P
 from ..events import EVENT_LABELS, EVENT_TYPES
-from ..models import Event, Notification, WorkflowExecution, WorkflowRule
+from ..models import Event, Notification, User, WorkflowExecution, WorkflowRule
+from ..pagination import Paging, page_info, slice_of, total_for
 from ..schemas import RuleInput, SettingsInput
 from ..worker import drain_queue
 
@@ -127,11 +128,21 @@ def delete_rule(rule_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
 # Event bus
 # ---------------------------------------------------------------------------
 @router.get("/events", dependencies=[Depends(require(P.DATA_READ))])
-def list_events(ctx: CurrentUser, db: Db, status: str | None = Query(None)) -> dict:
+def list_events(ctx: CurrentUser, db: Db, paging: Paging, status: str | None = Query(None)) -> dict:
     stmt = select(Event).where(Event.business_id == ctx.business.id)
     if status:
         stmt = stmt.where(Event.status == status)
-    rows = list(db.scalars(stmt.order_by(Event.created_at.desc()).limit(100)))
+    stmt = stmt.order_by(Event.created_at.desc())
+    total = total_for(db, stmt)
+    rows = list(db.scalars(slice_of(stmt, paging)))
+
+    # One lookup for the whole page, rather than one per row.
+    actor_ids = {e.user_id for e in rows if e.user_id}
+    actors = (
+        dict(db.execute(select(User.id, User.name).where(User.id.in_(actor_ids))).all())
+        if actor_ids
+        else {}
+    )
 
     counts = dict(
         db.execute(
@@ -141,7 +152,8 @@ def list_events(ctx: CurrentUser, db: Db, status: str | None = Query(None)) -> d
         ).all()
     )
     return {
-        "rows": [ser.event(e) for e in rows],
+        "rows": [ser.event(e, actors.get(e.user_id)) for e in rows],
+        "page": page_info(paging, total),
         "counts": {
             "pending": counts.get("pending", 0),
             "processing": counts.get("processing", 0),
@@ -178,21 +190,24 @@ def drain(ctx: CurrentUser) -> dict:
 # Notifications
 # ---------------------------------------------------------------------------
 @router.get("/notifications", dependencies=[Depends(require(P.DATA_READ))])
-def list_notifications(ctx: CurrentUser, db: Db) -> dict:
-    rows = list(
-        db.scalars(
-            select(Notification)
-            .where(Notification.business_id == ctx.business.id)
-            .order_by(Notification.created_at.desc())
-            .limit(100)
-        )
+def list_notifications(ctx: CurrentUser, db: Db, paging: Paging) -> dict:
+    listing = (
+        select(Notification)
+        .where(Notification.business_id == ctx.business.id)
+        .order_by(Notification.created_at.desc())
     )
+    total = total_for(db, listing)
+    rows = list(db.scalars(slice_of(listing, paging)))
     unread = db.scalar(
         select(func.count(Notification.id)).where(
             Notification.business_id == ctx.business.id, Notification.read.is_(False)
         )
     )
-    return {"rows": [ser.notification(n) for n in rows], "unread": unread or 0}
+    return {
+        "rows": [ser.notification(n) for n in rows],
+        "page": page_info(paging, total),
+        "unread": unread or 0,
+    }
 
 
 @router.get("/notifications/unread-count", dependencies=[Depends(require(P.DATA_READ))])

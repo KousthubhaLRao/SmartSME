@@ -31,8 +31,25 @@ EVENT_LABELS = {
 }
 
 
-def publish(db: Session, business_id: uuid.UUID, type_: str, payload: dict) -> Event:
-    """Append an event inside the caller's transaction (do not commit here)."""
-    event = Event(business_id=business_id, type=type_, payload=payload, status="pending")
+def publish(
+    db: Session,
+    business_id: uuid.UUID,
+    type_: str,
+    payload: dict,
+    actor_id: uuid.UUID | None = None,
+) -> Event:
+    """Append an event inside the caller's transaction (do not commit here).
+
+    `actor_id` is the user who caused it. A chained event — one raised while
+    processing another — passes the parent's actor through, so the whole chain
+    that a single click set off is attributed to the person who clicked.
+    """
+    event = Event(
+        business_id=business_id,
+        user_id=actor_id,
+        type=type_,
+        payload=payload,
+        status="pending",
+    )
     db.add(event)
     return event

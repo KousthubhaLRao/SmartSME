@@ -3,6 +3,7 @@ import { api, useApi, useMutation } from "@/lib/api";
 import { PageHeader, PageState, StatCard, EmptyState, SectionCard } from "@/components/ui/misc";
 import { Card } from "@/components/ui/card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { Pagination, type PageInfo } from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
@@ -35,13 +36,15 @@ interface ExpenseRow {
 
 interface ExpensesData {
   rows: ExpenseRow[];
+  page: PageInfo;
   stats: { total: number; count: number; flagged: number };
   byCategory: { label: string; value: number }[];
   currency: string;
 }
 
 export function Expenses() {
-  const { data, loading, error, reload } = useApi<ExpensesData>("/expenses");
+  const [page, setPage] = useState(1);
+  const { data, loading, error, reload } = useApi<ExpensesData>(`/expenses?page=${page}`);
   const [open, setOpen] = useState(false);
 
   if (!data) return <PageState loading={loading} error={error} />;
@@ -133,6 +136,7 @@ export function Expenses() {
               </TBody>
             </Table>
           )}
+          {data?.page && <Pagination page={data.page} onChange={setPage} label="expenses" />}
         </Card>
 
         <SectionCard title="By category">

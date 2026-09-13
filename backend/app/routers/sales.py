@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from .. import serializers as ser
 from ..core.deps import CurrentUser, Db, require
@@ -14,6 +14,7 @@ from ..core.utils import parse_date_input, round2
 from ..domain import sales as sales_domain
 from ..domain.payments import record_payment
 from ..models import Party, Product, Sale, SaleItem
+from ..pagination import Paging, page_info, slice_of, total_for
 from ..schemas import DateInput, PaymentInput, SaleInput
 from ..worker import drain_queue
 
@@ -21,16 +22,25 @@ router = APIRouter(prefix="/api/sales", tags=["sales"])
 
 
 @router.get("", dependencies=[Depends(require(P.DATA_READ))])
-def list_sales(ctx: CurrentUser, db: Db) -> dict:
-    rows = list(
-        db.execute(
-            select(Sale, Party.name)
-            .join(Party, Sale.party_id == Party.id, isouter=True)
-            .where(Sale.business_id == ctx.business.id)
-            .order_by(Sale.date.desc())
-        ).all()
+def list_sales(ctx: CurrentUser, db: Db, paging: Paging) -> dict:
+    listing = (
+        select(Sale, Party.name)
+        .join(Party, Sale.party_id == Party.id, isouter=True)
+        .where(Sale.business_id == ctx.business.id)
+        .order_by(Sale.date.desc())
     )
-    active = [s for s, _ in rows if s.status != "cancelled"]
+    total = total_for(db, listing)
+    rows = list(db.execute(slice_of(listing, paging)).all())
+
+    # Aggregated over every sale, not just this page.
+    stats = db.execute(
+        select(
+            func.coalesce(func.sum(Sale.total), 0.0),
+            func.coalesce(func.sum(Sale.total - Sale.amount_paid), 0.0),
+            func.count(Sale.id),
+        ).where(Sale.business_id == ctx.business.id, Sale.status != "cancelled")
+    ).one()
+
     products = list(
         db.scalars(
             select(Product).where(Product.business_id == ctx.business.id).order_by(Product.name)
@@ -45,10 +55,11 @@ def list_sales(ctx: CurrentUser, db: Db) -> dict:
     )
     return {
         "rows": [ser.sale_row(s, name) for s, name in rows],
+        "page": page_info(paging, total),
         "stats": {
-            "totalSales": round2(sum(s.total for s in active)),
-            "receivable": round2(sum(s.total - s.amount_paid for s in active)),
-            "count": len(active),
+            "totalSales": round2(stats[0]),
+            "receivable": round2(stats[1]),
+            "count": stats[2],
         },
         "products": [ser.product(p) for p in products],
         "customers": [{"id": str(c.id), "name": c.name} for c in customers],
@@ -60,7 +71,7 @@ def list_sales(ctx: CurrentUser, db: Db) -> dict:
 @router.post("", status_code=201, dependencies=[Depends(require(P.TXN_WRITE))])
 def create_sale(body: SaleInput, ctx: CurrentUser, db: Db) -> dict:
     try:
-        sale = sales_domain.create_sale(db, ctx.business.id, body)
+        sale = sales_domain.create_sale(db, ctx.business.id, body, ctx.user.id)
     except ValueError as err:
         raise HTTPException(status_code=400, detail=str(err)) from err
     # Apply the event chain now, so the client sees updated stock/balances.

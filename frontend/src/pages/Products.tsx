@@ -3,6 +3,7 @@ import { api, useApi, useMutation } from "@/lib/api";
 import { PageHeader, PageState, StatCard, EmptyState, SectionCard } from "@/components/ui/misc";
 import { Card } from "@/components/ui/card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { Pagination, type PageInfo } from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
@@ -37,6 +38,7 @@ interface Movement {
 
 interface ProductsData {
   rows: ProductRow[];
+  page: PageInfo;
   movements: Movement[];
   stats: { count: number; inventoryValue: number; lowCount: number };
   currency: string;
@@ -54,7 +56,8 @@ const BLANK = {
 };
 
 export function Products() {
-  const { data, loading, error, reload } = useApi<ProductsData>("/products");
+  const [page, setPage] = useState(1);
+  const { data, loading, error, reload } = useApi<ProductsData>(`/products?page=${page}`);
   const [editing, setEditing] = useState<ProductRow | null>(null);
   const [creating, setCreating] = useState(false);
   const [adjusting, setAdjusting] = useState<ProductRow | null>(null);
@@ -178,6 +181,7 @@ export function Products() {
             </TBody>
           </Table>
         )}
+        {data?.page && <Pagination page={data.page} onChange={setPage} label="products" />}
       </Card>
 
       <SectionCard

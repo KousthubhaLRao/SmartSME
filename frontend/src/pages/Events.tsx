@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, useApi, useMutation } from "@/lib/api";
 import { PageHeader, PageState, StatCard, EmptyState, SectionCard } from "@/components/ui/misc";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { Pagination, type PageInfo } from "@/components/ui/pagination";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Icon } from "@/components/Icon";
@@ -14,12 +15,15 @@ interface EventRow {
   status: string;
   retryCount: number;
   error: string | null;
+  /** Name of the user who caused it; null for seeded or system events. */
+  actor: string | null;
   createdAt: string;
   processedAt: string | null;
 }
 
 interface EventsData {
   rows: EventRow[];
+  page: PageInfo;
   counts: { pending: number; processing: number; done: number; dead: number };
   eventTypes: { value: string; label: string }[];
 }
@@ -36,8 +40,9 @@ const FILTERS = ["", "pending", "processing", "done", "dead"];
 
 export function Events() {
   const [filter, setFilter] = useState("");
+  const [page, setPage] = useState(1);
   const { data, loading, error, reload } = useApi<EventsData>(
-    `/events${filter ? `?status=${filter}` : ""}`,
+    `/events?page=${page}${filter ? `&status=${filter}` : ""}`,
   );
   const { run, pending } = useMutation();
 
@@ -98,7 +103,10 @@ export function Events() {
         {FILTERS.map((s) => (
           <button
             key={s || "all"}
-            onClick={() => setFilter(s)}
+            onClick={() => {
+              setPage(1);
+              setFilter(s);
+            }}
             className={cn(
               "rounded-md px-3 py-1.5 font-medium capitalize transition-colors",
               filter === s
@@ -126,6 +134,7 @@ export function Events() {
               <TR className="hover:bg-transparent">
                 <TH>Event</TH>
                 <TH>Status</TH>
+                <TH>By</TH>
                 <TH className="text-right">Retries</TH>
                 <TH>Created</TH>
                 <TH>Processed</TH>
@@ -143,6 +152,9 @@ export function Events() {
                   </TD>
                   <TD>
                     <Badge tone={TONE[e.status] ?? "outline"}>{e.status}</Badge>
+                  </TD>
+                  <TD className="text-muted-foreground">
+                    {e.actor ?? <span className="text-muted-foreground/60">System</span>}
                   </TD>
                   <TD className="text-right tabular-nums text-muted-foreground">{e.retryCount}</TD>
                   <TD className="text-muted-foreground">{formatDateTime(e.createdAt)}</TD>
@@ -170,6 +182,7 @@ export function Events() {
             </TBody>
           </Table>
         )}
+        {data?.page && <Pagination page={data.page} onChange={setPage} label="events" />}
       </SectionCard>
     </div>
   );

@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { api, useApi, useMutation } from "@/lib/api";
 import { PageHeader, PageState, EmptyState, SectionCard } from "@/components/ui/misc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Pagination, type PageInfo } from "@/components/ui/pagination";
 import { Icon } from "@/components/Icon";
 import { cn, timeAgo } from "@/lib/utils";
 
@@ -23,9 +25,12 @@ const TONE: Record<string, "info" | "success" | "warning" | "destructive"> = {
 };
 
 export function Notifications() {
-  const { data, loading, error, reload } = useApi<{ rows: Row[]; unread: number }>(
-    "/notifications",
-  );
+  const [page, setPage] = useState(1);
+  const { data, loading, error, reload } = useApi<{
+    rows: Row[];
+    page: PageInfo;
+    unread: number;
+  }>(`/notifications?page=${page}`);
   const { run, pending } = useMutation();
 
   if (!data) return <PageState loading={loading} error={error} />;
@@ -92,6 +97,7 @@ export function Notifications() {
             ))}
           </ul>
         )}
+        {data?.page && <Pagination page={data.page} onChange={setPage} label="notifications" />}
       </SectionCard>
     </div>
   );

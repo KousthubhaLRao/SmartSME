@@ -184,6 +184,7 @@ def _apply_sale(db: Session, event: Event) -> int:
             event.business_id,
             "STOCK_UPDATED",
             {"productId": str(product_id), "cause": "sale", "refId": str(sale.id)},
+            event.user_id,
         )
     return len(items)
 
@@ -235,6 +236,7 @@ def _apply_purchase(db: Session, event: Event) -> int:
             event.business_id,
             "STOCK_UPDATED",
             {"productId": str(product_id), "cause": "purchase", "refId": str(pur.id)},
+            event.user_id,
         )
     return len(items)
 

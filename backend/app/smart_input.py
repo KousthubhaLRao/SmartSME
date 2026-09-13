@@ -224,7 +224,12 @@ def draft_from_image(
     return draft
 
 
-def publish_draft(db: Session, business_id: uuid.UUID, payload: dict[str, Any]) -> dict[str, str]:
+def publish_draft(
+    db: Session,
+    business_id: uuid.UUID,
+    payload: dict[str, Any],
+    actor_id: uuid.UUID | None = None,
+) -> dict[str, str]:
     """Run a confirmed draft through the normal domain layer."""
     type_ = payload.get("type") or "sale"
     source = payload.get("source") or "nlp"
@@ -241,6 +246,7 @@ def publish_draft(db: Session, business_id: uuid.UUID, payload: dict[str, Any]) 
                 date=date,
                 source=source,
             ),
+            actor_id,
         )
         return {"ok": "Expense recorded."}
 
@@ -272,6 +278,7 @@ def publish_draft(db: Session, business_id: uuid.UUID, payload: dict[str, Any]) 
                 date=date,
                 source=source,
             ),
+            actor_id,
         )
         return {"ok": f"Purchase {pur.reference_number} created."}
 
@@ -287,5 +294,6 @@ def publish_draft(db: Session, business_id: uuid.UUID, payload: dict[str, Any]) 
             date=date,
             source=source,
         ),
+        actor_id,
     )
     return {"ok": f"Sale {sale.invoice_number} created."}

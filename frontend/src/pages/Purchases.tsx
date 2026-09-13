@@ -3,6 +3,7 @@ import { api, useApi, useMutation } from "@/lib/api";
 import { PageHeader, PageState, StatCard, EmptyState, Skeleton } from "@/components/ui/misc";
 import { Card } from "@/components/ui/card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import { Pagination, type PageInfo } from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
@@ -31,6 +32,7 @@ interface PurchaseRow {
 
 interface PurchasesData {
   rows: PurchaseRow[];
+  page: PageInfo;
   stats: { totalPurchases: number; payable: number; count: number };
   products: EditorProduct[];
   suppliers: { id: string; name: string }[];
@@ -74,7 +76,8 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 export function Purchases() {
-  const { data, loading, error, reload } = useApi<PurchasesData>("/purchases");
+  const [page, setPage] = useState(1);
+  const { data, loading, error, reload } = useApi<PurchasesData>(`/purchases?page=${page}`);
   const [openId, setOpenId] = useState<string | null>(null);
   const [detail, setDetail] = useState<PurchaseDetail | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
@@ -215,6 +218,7 @@ export function Purchases() {
             </TBody>
           </Table>
         )}
+        {data?.page && <Pagination page={data.page} onChange={setPage} label="purchases" />}
       </Card>
 
       <Modal

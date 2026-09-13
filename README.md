@@ -22,6 +22,7 @@ Vite + Tailwind on the frontend, talking over a cookie-authenticated JSON API.
 - [Architecture](#architecture)
 - [Database schema](#database-schema)
 - [Event bus & workflow engine](#event-bus--workflow-engine)
+- [Performance](#performance)
 - [Smart Input Engine (NLP + OCR)](#smart-input-engine-nlp--ocr)
 - [Reports](#reports)
 - [Auth](#auth)
@@ -280,7 +281,9 @@ SmartSME/
 │   │   ├── conftest.py         scratch test database + client fixtures
 │   │   ├── test_domain.py      pure domain logic, no database
 │   │   ├── test_api_smoke.py   every endpoint, end to end
-│   │   └── test_rbac.py        roles, invites and sign-in throttling
+│   │   ├── test_rbac.py        roles, invites and sign-in throttling
+│   │   ├── test_pagination.py  paging envelopes and whole-set totals
+│   │   └── test_event_actor.py who caused each event
 │   └── app/
 │       ├── main.py             FastAPI app, CORS, lifespan (seed + worker)
 │       │
@@ -318,6 +321,7 @@ SmartSME/
 │       │                       reports · ops
 │       ├── ai/                 client.py · nlp.py · ocr.py
 │       │
+│       ├── pagination.py       ?page= / ?pageSize= helpers
 │       ├── serializers.py      the JSON shapes the SPA consumes
 │       ├── events.py           the outbox (publish)
 │       ├── workflow.py         core effects + WHEN/THEN rule engine
@@ -489,7 +493,79 @@ app can never drift onto different databases.
 
 ---
 
+## Performance
+
+### Indexes
+
+Postgres does not index a foreign key for you, so until migration `0003` every
+query scoped to one business — which is every query in the app — was a
+sequential scan over the whole table. Measured on 200,000 sales across 50
+businesses, for the query behind the sales list:
+
+| | Plan | Time | Buffers read |
+|---|---|---|---|
+| Without the index | Parallel Seq Scan + sort, 2 extra workers | 10.50 ms | 4,517 |
+| With it | Index Scan | 0.067 ms | 53 |
+
+The indexes are listed in `alembic/versions/0003_tenant_indexes.py`. Each one
+matches a real access path: the leading column is the tenant filter, the
+trailing one the sort or join, so the planner satisfies both from the index —
+`(business_id, date DESC)` for the document lists, `(business_id, name)` for the
+catalogue, `(sale_id)` for line items.
+
+### Pagination
+
+Every list endpoint takes `?page=` and `?pageSize=` (default 50, maximum 200)
+and returns the rows alongside an envelope:
+
+```json
+{ "rows": [...], "page": { "page": 1, "pageSize": 50, "total": 214, "pages": 5, "hasMore": true } }
+```
+
+`app/pagination.py` holds the shared helpers. Offset rather than cursor,
+deliberately: the SPA shows numbered pages over data sorted by a business date,
+and a cursor would buy accuracy under concurrent inserts that nobody here would
+notice.
+
+**Totals are aggregated in SQL, not summed from the returned rows.** That is the
+part worth remembering — the rows are now one page of the set, so summing them
+would make a dashboard quietly report one page's worth of money. `tests/test_pagination.py`
+asserts that asking for `pageSize=1` returns identical statistics to asking for
+all of them.
+
+The same change fixed the parties endpoint, which used to load every sale and
+every purchase in the business into memory to work out who owed what; it now
+asks only for the unsettled documents belonging to the parties on the current
+page.
+
+Still unbounded, and fine for now: the product and party pickers inside the new
+sale and purchase forms, which fetch the whole catalogue to populate a dropdown.
+
+---
+
 ## Event bus & workflow engine
+
+### Who caused what
+
+Every event records the user behind it (`events.user_id`, migration `0004`), and
+the Event bus page shows it as a **By** column. That is what makes the outbox an
+audit trail rather than a log — it only became meaningful once a business could
+have more than one account.
+
+The actor is passed explicitly, the same way `business_id` already is, rather
+than read from a context variable: the router hands `ctx.user.id` to the domain
+function, which hands it to `publish()`.
+
+The case worth knowing about is the **chained** event. A sale raises
+`SALE_CREATED`; processing that raises `STOCK_UPDATED`, in the worker, with no
+HTTP request anywhere near it. Those inherit the parent event's author, so the
+whole chain a single click set off is attributed to the person who clicked.
+
+The column is nullable and the foreign key is `ON DELETE SET NULL`: events from
+the seed, from a cron drain, or from someone since removed from the team keep
+their place in the history with no author (shown as "System") rather than
+vanishing with them.
+
 
 Event types: `SALE_CREATED`, `PURCHASE_CREATED`, `STOCK_UPDATED`,
 `EXPENSE_ADDED`, `PAYMENT_RECEIVED`, `ORDER_CREATED`.
@@ -765,16 +841,18 @@ entirely "load a page, mutate, reload".
 
 ```bash
 cd backend
-.venv/Scripts/python -m pytest -q              # 104 tests
+.venv/Scripts/python -m pytest -q              # 135 tests
 ```
 
 ```
 ================================ test summary =================================
   Domain units       42 passed
   Endpoint smoke     36 passed
+  Event authors       6 passed
+  Paging             25 passed
   Roles & throttle   26 passed
 -------------------------------------------------------------------------------
-  104 passed in 7.29s
+  135 passed in 6.54s
 ```
 
 Hooks in `tests/conftest.py` replace pytest's default report order. Pytest prints
@@ -783,13 +861,23 @@ want has scrolled off; here a per-layer summary comes last, with the failures �
 full traceback and assertion diff — printed underneath it. A skip prints its
 reason, which is almost always "Postgres is unreachable".
 
-Three layers, in one run.
+Five layers, in one run.
 
 **`tests/test_domain.py` — 42 unit tests, no database.** The maths and parsing the
 money and Smart Input features depend on: discount-before-tax totals for sales and
 purchases, `round2` half-up rounding, line-item validation, the full date-phrase
 parser, discount extraction, the heuristic classifier, party/product fuzzy
 matching, report period resolution, and password hashing.
+
+**`tests/test_event_actor.py` — 6 tests over event authorship.** That a sale
+names the person who made it, that a chained stock event inherits the same
+author, that an employee's work is attributed to them and not to the owner, and
+that authorless system events still serialize.
+
+**`tests/test_pagination.py` — 25 tests over paging.** That every list endpoint
+returns an envelope, that pages do not overlap, that a page past the end is
+empty rather than an error, and above all that the statistics beside the rows
+still describe the whole set when the page is shrunk to one row.
 
 **`tests/test_rbac.py` — 26 tests over roles, invites and throttling.** Every
 role against the endpoints that matter for it, from both sides — what it may do
