@@ -17,7 +17,7 @@ from sqlalchemy import text
 
 from .core.config import settings
 from .core.db import SessionLocal, engine
-from .routers import auth, catalog, ops, platform, purchases, reports, sales, users
+from .routers import auth, catalog, inbox, ops, platform, purchases, reports, sales, users
 from .routers import input as input_router
 from .worker import start_worker, stop_worker
 
@@ -27,6 +27,15 @@ log = logging.getLogger("smartsme")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Every route here is a sync def, so FastAPI runs it in anyio's thread pool.
+    # Its default of 40 would cap concurrency below the connection pool.
+    try:
+        import anyio.to_thread
+
+        anyio.to_thread.current_default_thread_limiter().total_tokens = settings.server_threads
+    except Exception:  # pragma: no cover - older anyio
+        log.warning("could not raise the thread limit; concurrency may be capped at 40")
+
     with engine.connect() as conn:
         conn.execute(text("select 1"))
     log.info("database connected")
@@ -84,6 +93,7 @@ for r in (
     catalog.router,
     input_router.router,
     ops.router,
+    inbox.router,
     users.router,
     platform.router,
 ):

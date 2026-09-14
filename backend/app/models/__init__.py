@@ -9,6 +9,7 @@ from .base import Base
 from .business import Business, User
 from .event import Event
 from .expense import Expense
+from .inbound import ChannelLink, InboundMessage
 from .notification import Notification
 from .party import Party
 from .product import Product, StockMovement
@@ -19,8 +20,10 @@ from .workflow import WorkflowExecution, WorkflowRule
 __all__ = [
     "Base",
     "Business",
+    "ChannelLink",
     "Event",
     "Expense",
+    "InboundMessage",
     "Invite",
     "LoginAttempt",
     "Notification",

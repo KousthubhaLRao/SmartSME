@@ -14,7 +14,16 @@ interface Row {
   title: string;
   message: string;
   read: boolean;
+  eventId: string | null;
+  ruleId: string | null;
+  /** What raised it: which rule, on which event, and who caused that event. */
+  source: { rule: string | null; eventType: string | null; actor: string | null } | null;
   createdAt: string;
+}
+
+interface SeverityCount {
+  value: string;
+  count: number;
 }
 
 const TONE: Record<string, "info" | "success" | "warning" | "destructive"> = {
@@ -26,12 +35,25 @@ const TONE: Record<string, "info" | "success" | "warning" | "destructive"> = {
 
 export function Notifications() {
   const [page, setPage] = useState(1);
+  const [severity, setSeverity] = useState("");
+  const [unreadOnly, setUnreadOnly] = useState(false);
+  const query = new URLSearchParams({ page: String(page) });
+  if (severity) query.set("severity", severity);
+  if (unreadOnly) query.set("unread", "true");
   const { data, loading, error, reload } = useApi<{
     rows: Row[];
     page: PageInfo;
     unread: number;
-  }>(`/notifications?page=${page}`);
+    severities: SeverityCount[];
+  }>(`/notifications?${query}`);
   const { run, pending } = useMutation();
+
+  /** Changing a filter must go back to page one, or you land past the end. */
+  function filter(next: { severity?: string; unread?: boolean }) {
+    if (next.severity !== undefined) setSeverity(next.severity);
+    if (next.unread !== undefined) setUnreadOnly(next.unread);
+    setPage(1);
+  }
 
   if (!data) return <PageState loading={loading} error={error} />;
 
@@ -50,7 +72,35 @@ export function Notifications() {
             <Icon name="check" size={16} /> Mark all read
           </Button>
         )}
+        <Button
+          variant="outline"
+          disabled={pending}
+          onClick={() => run(() => api.post("/notifications/clear-read"), reload)}
+        >
+          <Icon name="trash" size={16} /> Clear read
+        </Button>
       </PageHeader>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <FilterChip
+          active={!severity && !unreadOnly}
+          onClick={() => filter({ severity: "", unread: false })}
+        >
+          All
+        </FilterChip>
+        <FilterChip active={unreadOnly} onClick={() => filter({ unread: !unreadOnly })}>
+          Unread ({data.unread})
+        </FilterChip>
+        {data.severities.map((s) => (
+          <FilterChip
+            key={s.value}
+            active={severity === s.value}
+            onClick={() => filter({ severity: severity === s.value ? "" : s.value })}
+          >
+            {s.value} ({s.count})
+          </FilterChip>
+        ))}
+      </div>
 
       <SectionCard title="Alerts" description="Raised by the workflow engine">
         {data.rows.length === 0 ? (
@@ -81,18 +131,37 @@ export function Notifications() {
                     {!n.read && <Badge tone="primary">New</Badge>}
                   </div>
                   <p className="mt-0.5 text-sm text-muted-foreground">{n.message}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{timeAgo(n.createdAt)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {timeAgo(n.createdAt)}
+                    {n.source?.rule && <> · rule {n.source.rule}</>}
+                    {n.source?.eventType && <> · {n.source.eventType}</>}
+                    {n.source?.actor && <> · by {n.source.actor}</>}
+                  </p>
                 </div>
-                {!n.read && (
+                <div className="flex shrink-0 items-center gap-1">
                   <Button
                     variant="ghost"
                     size="sm"
                     disabled={pending}
-                    onClick={() => run(() => api.post(`/notifications/${n.id}/read`), reload)}
+                    onClick={() =>
+                      run(
+                        () => api.post(`/notifications/${n.id}/${n.read ? "unread" : "read"}`),
+                        reload,
+                      )
+                    }
                   >
-                    Mark read
+                    {n.read ? "Unread" : "Mark read"}
                   </Button>
-                )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Dismiss"
+                    disabled={pending}
+                    onClick={() => run(() => api.del(`/notifications/${n.id}`), reload)}
+                  >
+                    <Icon name="x" size={15} />
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>
@@ -100,5 +169,30 @@ export function Notifications() {
         {data?.page && <Pagination page={data.page} onChange={setPage} label="notifications" />}
       </SectionCard>
     </div>
+  );
+}
+
+function FilterChip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-full border px-3 py-1 text-xs font-medium capitalize transition-colors focus-visible:focus-ring",
+        active
+          ? "border-transparent bg-accent text-accent-foreground"
+          : "border-border text-muted-foreground hover:bg-muted hover:text-foreground",
+      )}
+    >
+      {children}
+    </button>
   );
 }

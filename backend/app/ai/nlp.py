@@ -11,6 +11,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 
 from .client import extract_json, get_provider
+from .lang import DEVANAGARI, KANNADA, normalize
 
 EventType = str  # SALE_CREATED | PURCHASE_CREATED | ORDER_CREATED | EXPENSE_ADDED
 
@@ -38,7 +39,10 @@ class ParsedCommand:
 
 SYSTEM = (
     "You extract a single structured business event from an SME shopkeeper's "
-    "plain-language note. Reply with JSON only, no prose or markdown."
+    "plain-language note. The note may be in English, Hindi or Kannada, written "
+    'either in its own script or in Latin letters ("5 kilo chawal Anita ko '
+    'becha", "Anita ge 5 kilo akki maride"), and may mix them in one '
+    "sentence. Reply with JSON only, no prose or markdown."
 )
 
 
@@ -54,6 +58,7 @@ def _prompt(text: str, today_iso: str) -> str:
 - discountType: "percentage" if a percentage discount is mentioned (e.g. "10% off", "discount of 10%"), "amount" if a flat money discount is mentioned (e.g. "discount of 300 rupees"), otherwise "none".
 - discountValue: the numeric discount, the percent number for "percentage" or the rupee figure for "amount"; 0 when discountType is "none".
 - date: the date the transaction happened as "YYYY-MM-DD" if the note states one (e.g. "on 20th August 2026", "yesterday", "3 Sept"); otherwise null. Today is {today_iso}, resolve relative words against it, and assume a bare day+month is the most recent past occurrence.
+Language: the note may be English, Hindi or Kannada, in Devanagari, Kannada script or Latin letters, or a mix. Understand all of them. Keep `party` and `product` in the script the note used - do not translate or transliterate them, because they are matched against a catalogue that may itself be in that script. Common verbs: becha/bech diya/ಮಾರಿದೆ/maride mean sold; kharida/ಖರೀದಿಸಿದೆ/kharidiside mean bought; kharch/ಖರ್ಚು/kharchu means an expense; chahiye/ಬೇಕು/beku means a customer wants something. "ko"/"ge"/"ಗೆ" mark the recipient and "se"/"inda"/"ಇಂದ" the supplier, and both come AFTER the name. Hindi "kal" is yesterday for something already done and tomorrow for something wanted.
 Use null where a value is unknown. No extra keys, no commentary.
 
 Note: "{text}\""""
@@ -232,8 +237,33 @@ UNIT_WORDS = re.compile(
 )
 
 
+#: Words that can never be part of a party or product name. After
+#: normalisation a note can read "to Anita 5 kg rice sold", so the name is no
+#: longer guaranteed to sit at the end of the sentence and "$" cannot end it.
+#:
+#: Only words that cannot appear *inside* a name belong here, and "and" plainly
+#: can: it cut "Ram and Sons" down to "Ram", which then matched an entirely
+#: different customer called Ramesh, and "salt and pepper" down to "Salt".
+#:
+#: The whole-inventory wording is matched as a phrase for the same reason. A
+#: bare "all" would halve "all purpose flour", whereas "all stock" is not part
+#: of anything's name - it is what a note says instead of naming a product.
+STOP_WORDS = (
+    "for|at|on|worth|each|to|from|tomorrow|today|yesterday|sold|bought|sell|buy|"
+    "purchased|expense|spent|wants|order|ordered|discount|off|rs|inr|everything|"
+    r"(?:entire|all|whole|complete|full)\s+(?:inventory|stocks?|goods|products?)"
+)
+
+#: Left lowercase in the middle of a name, so a new party is created as
+#: "Ram and Sons" rather than "Ram And Sons".
+_MINOR_WORDS = {"and", "of", "the", "for", "at", "to"}
+
+
 def _title_case(s: str) -> str:
-    return " ".join(w[0].upper() + w[1:] for w in s.lower().split() if w).strip()
+    words = [w for w in s.lower().split() if w]
+    return " ".join(
+        w if i and w in _MINOR_WORDS else w[0].upper() + w[1:] for i, w in enumerate(words)
+    ).strip()
 
 
 def heuristic_parse(text: str) -> ParsedCommand:
@@ -241,7 +271,13 @@ def heuristic_parse(text: str) -> ParsedCommand:
 
     Good enough as a starting point: the confirmation screen lets the user
     correct anything before it is published.
+
+    The note is first rewritten into its English shape by `lang.normalize`, so
+    Hindi and Kannada — in their own scripts or typed in Latin letters — reach
+    the same rules as English. Names and products are left in whatever script
+    they were written in, to be matched against the catalogue as-is.
     """
+    text = normalize(text)
     lower = text.lower()
 
     all_inventory = bool(
@@ -279,13 +315,19 @@ def heuristic_parse(text: str) -> ParsedCommand:
 
     # "at" is intentionally excluded: it usually marks a unit price
     # ("5 bags at 100 each"), not the total.
+    # The word boundary matters: without it "ABC Suppliers 10 bags" matches the
+    # "rs" inside "Suppliers" and reads 10 as the money value. Shop names ending
+    # in Traders/Suppliers/Brothers are everywhere.
     amt_match = re.search(
-        r"(?:₹|rs\.?|inr|worth|for|amount)\s*(\d[\d,]*(?:\.\d+)?)", text, re.IGNORECASE
+        r"(?:₹|\b(?:rs\.?|inr|worth|for|amount))\s*(\d[\d,]*(?:\.\d+)?)",
+        text,
+        re.IGNORECASE,
     )
     amount = float(amt_match[1].replace(",", "")) if amt_match else None
 
     party_match = re.search(
-        r"\b(?:to|from)\s+([A-Za-z0-9&.'\s]+?)(?:\s+(?:for|at|on|worth|tomorrow|today|₹|rs\b)|[.,!?]|$)",
+        rf"\b(?:to|from)\s+([A-Za-z0-9&.'\s{DEVANAGARI}{KANNADA}]+?)"
+        rf"(?=\s+(?:{STOP_WORDS})\b|\s+\d|\s*[.,!?₹]|$)",
         text,
         re.IGNORECASE,
     )
@@ -293,7 +335,9 @@ def heuristic_parse(text: str) -> ParsedCommand:
 
     if event_type == "EXPENSE_ADDED":
         amount = amount if amount is not None else first_number
-        cat_match = re.search(r"\bfor\s+([A-Za-z\s]+)", text, re.IGNORECASE) or re.search(
+        cat_match = re.search(
+            rf"\bfor\s+([A-Za-z\s{DEVANAGARI}{KANNADA}]+)", text, re.IGNORECASE
+        ) or re.search(
             r"\b(rent|salary|electricity|utilities?|fuel|transport|internet|maintenance|misc\w*)\b",
             text,
             re.IGNORECASE,
@@ -315,7 +359,7 @@ def heuristic_parse(text: str) -> ParsedCommand:
     # Product = words between the quantity and "to/from", with unit words stripped.
     product: str | None = None
     mid = re.search(
-        r"\b\d[\d,]*(?:\.\d+)?\s+(.*?)(?:\s+(?:to|from|for|at|worth)\b|[.,!?]|$)",
+        rf"\b\d[\d,]*(?:\.\d+)?\s+(.*?)(?=\s+(?:{STOP_WORDS})\b|\s*[.,!?]|$)",
         text,
         re.IGNORECASE,
     )

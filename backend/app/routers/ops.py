@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 
 from .. import serializers as ser
 from ..ai.client import ai_status
@@ -189,24 +189,85 @@ def drain(ctx: CurrentUser) -> dict:
 # ---------------------------------------------------------------------------
 # Notifications
 # ---------------------------------------------------------------------------
+SEVERITIES = ("info", "warning", "error")
+
+
 @router.get("/notifications", dependencies=[Depends(require(P.DATA_READ))])
-def list_notifications(ctx: CurrentUser, db: Db, paging: Paging) -> dict:
-    listing = (
-        select(Notification)
-        .where(Notification.business_id == ctx.business.id)
-        .order_by(Notification.created_at.desc())
-    )
+def list_notifications(
+    ctx: CurrentUser,
+    db: Db,
+    paging: Paging,
+    severity: str | None = Query(None),
+    unread: bool = Query(False),
+) -> dict:
+    """The alert log. Filterable, because a shop with a noisy rule needs to be
+    able to find the one alert that matters."""
+    if severity and severity not in SEVERITIES:
+        raise HTTPException(status_code=400, detail="Unknown severity.")
+
+    listing = select(Notification).where(Notification.business_id == ctx.business.id)
+    if severity:
+        listing = listing.where(Notification.severity == severity)
+    if unread:
+        listing = listing.where(Notification.read.is_(False))
+    listing = listing.order_by(Notification.created_at.desc())
+
     total = total_for(db, listing)
     rows = list(db.scalars(slice_of(listing, paging)))
-    unread = db.scalar(
+
+    # Resolve every alert's origin in one pass: which rule fired, on which
+    # event, and — through the event — who caused it.
+    rule_ids = {n.rule_id for n in rows if n.rule_id}
+    event_ids = {n.event_id for n in rows if n.event_id}
+    rules = (
+        dict(
+            db.execute(
+                select(WorkflowRule.id, WorkflowRule.name).where(WorkflowRule.id.in_(rule_ids))
+            ).all()
+        )
+        if rule_ids
+        else {}
+    )
+    events = (
+        {e.id: e for e in db.scalars(select(Event).where(Event.id.in_(event_ids)))}
+        if event_ids
+        else {}
+    )
+    actor_ids = {e.user_id for e in events.values() if e.user_id}
+    actors = (
+        dict(db.execute(select(User.id, User.name).where(User.id.in_(actor_ids))).all())
+        if actor_ids
+        else {}
+    )
+
+    def source_of(n: Notification) -> dict | None:
+        e = events.get(n.event_id) if n.event_id else None
+        rule_name = rules.get(n.rule_id) if n.rule_id else None
+        if e is None and rule_name is None:
+            return None
+        return {
+            "rule": rule_name,
+            "eventType": e.type if e else None,
+            "actor": actors.get(e.user_id) if e and e.user_id else None,
+        }
+
+    counts = dict(
+        db.execute(
+            select(Notification.severity, func.count(Notification.id))
+            .where(Notification.business_id == ctx.business.id)
+            .group_by(Notification.severity)
+        ).all()
+    )
+    unread_total = db.scalar(
         select(func.count(Notification.id)).where(
             Notification.business_id == ctx.business.id, Notification.read.is_(False)
         )
     )
     return {
-        "rows": [ser.notification(n) for n in rows],
+        "rows": [ser.notification(n, source_of(n)) for n in rows],
         "page": page_info(paging, total),
-        "unread": unread or 0,
+        "unread": unread_total or 0,
+        "severities": [{"value": s, "count": counts.get(s, 0)} for s in SEVERITIES],
     }
 
 
@@ -234,6 +295,36 @@ def mark_read(notification_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
     return {"ok": True}
 
 
+@router.post(
+    "/notifications/{notification_id}/unread", dependencies=[Depends(require(P.DATA_READ))]
+)
+def mark_unread(notification_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
+    """Put an alert back, for when it was cleared before it was dealt with."""
+    n = _notification_or_404(db, ctx, notification_id)
+    n.read = False
+    db.commit()
+    return {"ok": True}
+
+
+@router.delete("/notifications/{notification_id}", dependencies=[Depends(require(P.DATA_MANAGE))])
+def dismiss(notification_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
+    db.delete(_notification_or_404(db, ctx, notification_id))
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/notifications/clear-read", dependencies=[Depends(require(P.DATA_MANAGE))])
+def clear_read(ctx: CurrentUser, db: Db) -> dict:
+    """Drop everything already dealt with, leaving the outstanding alerts."""
+    removed = db.execute(
+        delete(Notification).where(
+            Notification.business_id == ctx.business.id, Notification.read.is_(True)
+        )
+    ).rowcount
+    db.commit()
+    return {"removed": removed or 0}
+
+
 @router.post("/notifications/read-all", dependencies=[Depends(require(P.DATA_READ))])
 def mark_all_read(ctx: CurrentUser, db: Db) -> dict:
     for n in db.scalars(
@@ -249,6 +340,17 @@ def mark_all_read(ctx: CurrentUser, db: Db) -> dict:
 # ---------------------------------------------------------------------------
 # Settings
 # ---------------------------------------------------------------------------
+def _notification_or_404(db: Db, ctx: CurrentUser, notification_id: uuid.UUID) -> Notification:
+    n = db.scalar(
+        select(Notification).where(
+            Notification.id == notification_id, Notification.business_id == ctx.business.id
+        )
+    )
+    if n is None:
+        raise HTTPException(status_code=404, detail="Notification not found.")
+    return n
+
+
 @router.get("/settings", dependencies=[Depends(require(P.DATA_READ))])
 def get_settings(ctx: CurrentUser) -> dict:
     b = ctx.business

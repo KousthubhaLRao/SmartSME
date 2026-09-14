@@ -11,5 +11,31 @@ services:
     volumes:
       - smartsme_pgdata:/var/lib/postgresql/data
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Broker only: the outbox in Postgres is the source of truth, so an empty
+    # Redis after a restart costs nothing: the sweep re-delivers.
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+
+  # Local mail: an SMTP sink with a web UI on :8025 and POP3 on :1110.
+  # SmartSME sends nothing here; it *reads* from it, so an order mailed to the
+  # inbox can be parsed without touching a real mailbox.
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+      MP_POP3_AUTH_FILE: /data/pop3.auth
+    volumes:
+      - ./docker/mailpit:/data:ro
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # web UI
+      - "1110:1110"   # POP3, which is how SmartSME collects mail
+
 volumes:
   smartsme_pgdata:

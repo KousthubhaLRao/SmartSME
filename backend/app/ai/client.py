@@ -15,13 +15,68 @@ built-in heuristic parser.
 from __future__ import annotations
 
 import json
+import logging
+import threading
+import time
 from dataclasses import dataclass
 
 import httpx
 
 from ..core.config import settings
 
+log = logging.getLogger("smartsme.ai")
+
 TIMEOUT = httpx.Timeout(60.0, connect=10.0)
+
+#: A provider that is down is not worth waiting a minute for, over and over.
+#: Nothing that calls it is urgent enough to justify that: every caller has a
+#: heuristic fallback, and the alternative is a queue of twenty-five mailed
+#: orders taking twenty-five minutes to fail one at a time.
+#:
+#: So after this many consecutive failures the provider is skipped outright for
+#: a cooling-off period, and callers degrade to the heuristic immediately.
+_BREAKER_FAILURES = 3
+_BREAKER_COOLDOWN = 120.0
+
+_breaker_lock = threading.Lock()
+_consecutive_failures = 0
+_skip_until = 0.0
+
+
+class ProviderUnavailable(RuntimeError):
+    """Raised instead of calling a provider that has just been failing."""
+
+
+def _breaker_is_open() -> bool:
+    with _breaker_lock:
+        return time.monotonic() < _skip_until
+
+
+def _record_success() -> None:
+    global _consecutive_failures, _skip_until
+    with _breaker_lock:
+        _consecutive_failures = 0
+        _skip_until = 0.0
+
+
+def _record_failure() -> None:
+    global _consecutive_failures, _skip_until
+    with _breaker_lock:
+        _consecutive_failures += 1
+        tripped = _consecutive_failures if _consecutive_failures >= _BREAKER_FAILURES else 0
+        if tripped:
+            _skip_until = time.monotonic() + _BREAKER_COOLDOWN
+    if tripped:
+        log.warning(
+            "AI provider failed %s times in a row; using the heuristic parser for %ss",
+            tripped,
+            int(_BREAKER_COOLDOWN),
+        )
+
+
+def reset_breaker() -> None:
+    """Forget the recent failures. For tests, and for a changed configuration."""
+    _record_success()
 
 
 @dataclass(slots=True)
@@ -47,11 +102,20 @@ class AiProvider:
         image: AiImage | None = None,
         max_tokens: int = 1024,
     ) -> str:
-        if self.id == "anthropic":
-            return _anthropic_complete(self, prompt, system, image, max_tokens)
-        if self.id == "google":
-            return _gemini_complete(self, prompt, system, image, max_tokens)
-        return _openai_complete(self, prompt, system, image, max_tokens)
+        if _breaker_is_open():
+            raise ProviderUnavailable(f"{self.label} is failing; skipping it for now")
+        try:
+            if self.id == "anthropic":
+                out = _anthropic_complete(self, prompt, system, image, max_tokens)
+            elif self.id == "google":
+                out = _gemini_complete(self, prompt, system, image, max_tokens)
+            else:
+                out = _openai_complete(self, prompt, system, image, max_tokens)
+        except Exception:
+            _record_failure()
+            raise
+        _record_success()
+        return out
 
 
 # ---------------------------------------------------------------------------

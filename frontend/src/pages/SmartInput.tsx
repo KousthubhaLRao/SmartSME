@@ -14,11 +14,14 @@ const TEXT_KEY = "smartsme:smart-input:text";
 // The parsed, in-progress draft survives navigation too, until it is published.
 const DRAFT_KEY = "smartsme:smart-input:draft";
 
+// English, Hinglish, Hindi and Kannada, so it is obvious at a glance that the
+// box takes all four. Names and products stay in whatever script they are typed.
 const EXAMPLES = [
   "Sold 10 rice bags to Kumar Traders",
-  "Purchase 50 sugar packets from ABC Suppliers",
+  "Kumar Traders ko 10 bori chawal becha",
+  "अनीता को 5 किलो चावल बेचा",
+  "ಅನಿತಾಗೆ ೪ ಕಿಲೋ ಅಕ್ಕಿ ಮಾರಿದೆ",
   "Paid electricity bill 3200",
-  "Sell everything to Anita Stores at a discount of 10%",
 ];
 
 interface Status {
@@ -224,11 +227,15 @@ export function SmartInput() {
             value={text}
             onChange={(e) => updateText(e.target.value)}
             placeholder="e.g. Sold 10 rice bags to Kumar Traders"
+            aria-describedby="smart-input-languages"
             className="min-h-28 text-base"
             onKeyDown={(e) => {
               if ((e.metaKey || e.ctrlKey) && e.key === "Enter") parseText();
             }}
           />
+          <p id="smart-input-languages" className="mt-2 text-xs text-muted-foreground">
+            English, Hindi or Kannada &mdash; in their own script or typed in English letters.
+          </p>
           <div className="mt-3 flex flex-wrap gap-2">
             {EXAMPLES.map((ex) => (
               <button

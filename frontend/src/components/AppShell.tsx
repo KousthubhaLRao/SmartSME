@@ -23,6 +23,7 @@ const NAV: { label?: string; items: NavItem[] }[] = [
     items: [
       { to: "/dashboard", label: "Dashboard", icon: "dashboard" },
       { to: "/input", label: "Smart Input", icon: "input", needs: PERMISSIONS.txnWrite },
+      { to: "/inbox", label: "Inbox", icon: "bell" },
     ],
   },
   {

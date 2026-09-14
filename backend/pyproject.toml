@@ -32,6 +32,9 @@ ignore = [
 # LLM prompts are kept verbatim; rewrapping them would change what the model reads.
 "app/ai/nlp.py" = ["E501"]
 "app/ai/ocr.py" = ["E501"]
+# The multilingual vocabulary is Devanagari and Kannada by definition, so the
+# "ambiguous character" rules have nothing useful to say about it.
+"app/ai/lang.py" = ["RUF001", "RUF002", "RUF003"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -30,14 +30,48 @@ T = TypeVar("T", Party, Product)
 
 
 def _norm(s: str) -> str:
-    """Lowercase, drop punctuation, collapse whitespace, so "Anita Stores." and
-    "ANITA  STORES" compare equal."""
-    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9\s]", " ", (s or "").lower())).strip()
+    r"""Lowercase, drop punctuation, collapse whitespace, so "Anita Stores." and
+    "ANITA  STORES" compare equal.
+
+    `\w` rather than `a-z0-9`: an ASCII-only class deletes Devanagari and
+    Kannada entirely, so every native-script name normalised to the empty string
+    and matched nothing.
+    """
+    return re.sub(r"\s+", " ", re.sub(r"[^\w\s]", " ", (s or "").lower())).strip()
+
+
+def _stem(token: str) -> str:
+    """Crude, deliberately: a catalogue says "Biscuits" and a note says
+    "biscuit", and that is the only difference worth papering over here."""
+    return token[:-1] if len(token) > 3 and token.endswith("s") else token
+
+
+def _tokens(s: str | None) -> list[str]:
+    return [_stem(t) for t in _norm(s).split(" ") if t]
+
+
+def _run_of(haystack: list[str], needle: list[str]) -> bool:
+    """Does `needle` appear in `haystack` as consecutive whole words?"""
+    if not needle or len(needle) > len(haystack):
+        return False
+    if len(needle) == 1 and len(needle[0]) < 3:
+        # "Al" would otherwise claim every name containing the word.
+        return False
+    return any(
+        haystack[i : i + len(needle)] == needle for i in range(len(haystack) - len(needle) + 1)
+    )
 
 
 def best_match(items: list[T], query: str | None) -> T | None:
-    """Exact (normalised), then substring either way, then token-subset, so
-    "Anita" resolves "Anita Stores"."""
+    """Exact (normalised), then whole-word containment either way, then
+    token-subset, so "Anita" resolves "Anita Stores".
+
+    Every comparison is on whole words. Plain substring matching looks the same
+    on the examples that motivate it and is quietly wrong in between: "Ram"
+    resolved to "Ramesh", so a sale to Ram and Sons was billed to a different
+    customer entirely. A name has to match something the other name actually
+    says, not a run of letters inside one of its words.
+    """
     if not query:
         return None
     needle = _norm(query)
@@ -48,14 +82,14 @@ def best_match(items: list[T], query: str | None) -> T | None:
         if _norm(item.name) == needle:
             return item
 
+    needle_tokens = _tokens(needle)
     for item in items:
-        n = _norm(item.name)
-        if len(n) > 1 and (n in needle or needle in n):
+        item_tokens = _tokens(item.name)
+        if _run_of(item_tokens, needle_tokens) or _run_of(needle_tokens, item_tokens):
             return item
 
-    needle_tokens = [t for t in needle.split(" ") if t]
     for item in items:
-        item_tokens = [t for t in _norm(item.name).split(" ") if t]
+        item_tokens = _tokens(item.name)
         if not item_tokens:
             continue
         short, long_set = (
@@ -230,8 +264,14 @@ def publish_draft(
     payload: dict[str, Any],
     actor_id: uuid.UUID | None = None,
 ) -> dict[str, str]:
-    """Run a confirmed draft through the normal domain layer."""
-    type_ = payload.get("type") or "sale"
+    """Run a confirmed draft through the normal domain layer.
+
+    Accepts either shape: the explicit `{"type": ...}` the Smart Input form
+    builds, or a draft straight from `draft_from_text`, which names the same
+    field `suggestedType`. Taking only the first silently turned every emailed
+    purchase into a sale.
+    """
+    type_ = payload.get("type") or payload.get("suggestedType") or "sale"
     source = payload.get("source") or "nlp"
     date = parse_date_input(payload.get("date"))
 
@@ -241,7 +281,9 @@ def publish_draft(
             business_id,
             ExpenseInput(
                 category=payload.get("category") or "General",
-                description=payload.get("description") or "",
+                # A draft keeps the original message in `note`; the form
+                # sends a `description`. Either can name the expense.
+                description=payload.get("description") or payload.get("note") or "",
                 amount=float(payload.get("amount") or 0),
                 date=date,
                 source=source,

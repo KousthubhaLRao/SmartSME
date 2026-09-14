@@ -13,6 +13,24 @@ class Settings(BaseSettings):
     # Postgres is required; there is no embedded fallback.
     database_url: str = "postgresql+psycopg://smartsme:smartsme@localhost:5432/smartsme"
 
+    # ---- Connection pool ----------------------------------------------------
+    # SQLAlchemy's defaults (5 + 10) are sized for a script, not a server: every
+    # concurrent request holds one connection for its whole life, so 15 of them
+    # is the ceiling on concurrency no matter how many workers are running.
+    db_pool_size: int = 20
+    db_max_overflow: int = 40
+    #: Fail fast rather than leaving a caller hanging for half a minute. A
+    #: request that cannot get a connection in this long is one the user has
+    #: already given up on.
+    db_pool_timeout: float = 10.0
+    #: Recycle before a proxy or Postgres drops an idle connection underneath us.
+    db_pool_recycle: int = 1800
+
+    #: Threads for the sync endpoint pool. One request occupies one thread *and*
+    #: one connection, so this is kept in step with the pool ceiling; making it
+    #: larger only queues work deeper inside the process.
+    server_threads: int = 60
+
     # ---- Auth ---------------------------------------------------------------
     auth_secret: str = "smartsme-dev-insecure-secret-change-me"
     session_cookie: str = "smartsme_session"
@@ -34,6 +52,42 @@ class Settings(BaseSettings):
     # ---- Frontend / CORS ----------------------------------------------------
     # Comma-separated list of allowed browser origins.
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+
+    # ---- Inbound orders -----------------------------------------------------
+    #: Collect orders from a mailbox. Off by default: an inbox that nobody has
+    #: configured should not be polled every minute.
+    email_ingest_enabled: bool = False
+    #: "pop3" suits Mailpit (the local dev inbox); "imap" suits a real mailbox.
+    email_protocol: Literal["pop3", "imap"] = "pop3"
+    email_host: str = "localhost"
+    email_port: int = 1110
+    email_user: str = "smartsme"
+    email_password: str = "smartsme"
+    email_ssl: bool = False
+    email_folder: str = "INBOX"
+    #: Most messages to take in one sweep, so a backlog cannot stall the worker.
+    email_batch: int = 25
+
+    #: A bot token from Telegram's @BotFather. Free, instant, no card.
+    telegram_bot_token: str = ""
+
+    #: Seconds between inbound sweeps.
+    inbound_poll_seconds: float = 30.0
+
+    # ---- Event dispatch -----------------------------------------------------
+    #: How a published event reaches the workflow engine.
+    #:   "inline" — drained inside the request, so effects are visible the moment
+    #:              the write returns. The default, and what the SPA expects.
+    #:   "celery" — handed to Redis and applied by a Celery worker. Higher
+    #:              throughput; the write returns before effects are applied.
+    event_dispatch: Literal["inline", "celery"] = "inline"
+    redis_url: str = "redis://localhost:6379/0"
+    #: Seconds between outbox sweeps. The sweep is the safety net that catches
+    #: events whose enqueue was lost (Redis restarting, say).
+    celery_sweep_seconds: float = 5.0
+    #: An event older than this that is still pending is considered stranded and
+    #: is re-enqueued by the sweep.
+    celery_stranded_seconds: float = 30.0
 
     # ---- Event worker -------------------------------------------------------
     # Disable the background poller (e.g. on serverless, where writes drain

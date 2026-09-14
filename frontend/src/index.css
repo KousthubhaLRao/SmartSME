@@ -4,112 +4,112 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ------------------------------------------------------------------ */
-/* Design tokens. One lime brand across both themes, on warm-neutral  */
-/* surfaces. Light is the default; the .dark class on <html> flips it. */
+/* Design tokens. A muted teal brand on warm-sand neutrals, calm enough */
+/* to sit in front of for a whole working day. Light is the default;    */
+/* the .dark class on <html> swaps to soft charcoal.                    */
 /* ------------------------------------------------------------------ */
 :root {
-  --background: #fbfbf7;
-  --foreground: #16180f;
+  --background: #faf9f7;
+  --foreground: #1f2421;
 
   --card: #ffffff;
-  --card-foreground: #171a10;
+  --card-foreground: #1f2421;
 
   --popover: #ffffff;
-  --popover-foreground: #171a10;
+  --popover-foreground: #1f2421;
 
-  --muted: #f2f3ea;
-  --muted-foreground: #6a6f5b;
+  --muted: #f1efea;
+  --muted-foreground: #6c716c;
 
-  --primary: #f0f941;
-  --primary-hover: #e2ee1c;
-  --primary-foreground: #14170a;
+  --primary: #2f6f6a;
+  --primary-hover: #265c58;
+  --primary-foreground: #ffffff;
 
-  /* Brand ink for links and small marks. The lime is a fill colour only: at
-     ~0.95 lightness it is unreadable as text on a light ground, so anything
-     that carries meaning as *text* uses this deep citron instead. */
-  --link: #4e5a0b;
+  /* Teal is readable as text on this ground (about 5.6:1), so links and
+     fills can share one colour - unlike the lime this replaced. */
+  --link: #2f6f6a;
 
-  --secondary: #f5f7e6;
-  --secondary-foreground: #3a4209;
+  --secondary: #eef2f1;
+  --secondary-foreground: #27403d;
 
-  --accent: #eef4cb;
-  --accent-foreground: #46500a;
+  --accent: #e3edeb;
+  --accent-foreground: #245a55;
 
-  --destructive: #dc2626;
-  --destructive-hover: #b91c1c;
+  /* Status colours are muted to match: a warning should read as a warning,
+     not as an alarm. */
+  --destructive: #b0473c;
+  --destructive-hover: #97392f;
   --destructive-foreground: #ffffff;
 
-  --success: #16a34a;
+  --success: #3f7d55;
   --success-foreground: #ffffff;
-  --warning: #b45309;
+  --warning: #a0712a;
   --warning-foreground: #ffffff;
-  --info: #1d4ed8;
+  --info: #3a6b92;
   --info-foreground: #ffffff;
 
-  --border: #e8e9dc;
-  --input: #dee0cd;
-  --ring: #a8b514;
+  --border: #e6e2db;
+  --input: #d8d3ca;
+  --ring: #4f938c;
 
-  /* Categorical series, brand-led. Validated for the lightness band, chroma
-     floor, CVD separation and contrast against a white card. */
-  --chart-1: #5f6f00;
-  --chart-2: #0891b2;
-  --chart-3: #9333ea;
-  --chart-4: #c2410c;
-  --chart-5: #1d4ed8;
+  /* Chart series. Validated for the lightness band, chroma floor, adjacent
+     CVD separation and contrast on white. The first is a more saturated teal
+     than the UI brand: at #2f6f6a a thin line reads as grey. */
+  --chart-1: #00897c;
+  --chart-2: #b5652a;
+  --chart-3: #4a5bb0;
+  --chart-4: #6f8f2f;
+  --chart-5: #a34a72;
 
   --radius: 1rem;
 }
 
 .dark {
-  --background: #050506;
-  --foreground: #f7f5fa;
+  --background: #14181a;
+  --foreground: #e8eae9;
 
-  --card: #0c0c0f;
-  --card-foreground: #f7f5fa;
+  --card: #1b2023;
+  --card-foreground: #e8eae9;
 
-  --popover: #121215;
-  --popover-foreground: #f7f5fa;
+  --popover: #1f2528;
+  --popover-foreground: #e8eae9;
 
-  --muted: #161519;
-  --muted-foreground: #aaa6af;
+  --muted: #232a2d;
+  --muted-foreground: #9aa3a1;
 
-  --primary: #f0f941;
-  --primary-hover: #f5fd6a;
-  --primary-foreground: #141116;
+  --primary: #6fb3ab;
+  --primary-hover: #82c2ba;
+  --primary-foreground: #0f1416;
 
-  /* On the near-black ground the lime is legible as text, so link ink is the
-     brand colour itself. */
-  --link: #f0f941;
+  --link: #8ecabf;
 
-  --secondary: #1b1b1e;
-  --secondary-foreground: #f7f7f2;
+  --secondary: #242b2e;
+  --secondary-foreground: #e8eae9;
 
-  --accent: #2b2c18;
-  --accent-foreground: #f0f941;
+  --accent: #22383a;
+  --accent-foreground: #9fd4cb;
 
-  --destructive: #f29a9a;
-  --destructive-hover: #ffc0c0;
-  --destructive-foreground: #ffffff;
+  --destructive: #dd8f85;
+  --destructive-hover: #eaa79e;
+  --destructive-foreground: #1a1210;
 
-  --success: #78d6a3;
-  --success-foreground: #08150f;
-  --warning: #f0bf72;
-  --warning-foreground: #1a1208;
-  --info: #7ec7e8;
-  --info-foreground: #07161c;
+  --success: #7fb894;
+  --success-foreground: #0d1712;
+  --warning: #d0a468;
+  --warning-foreground: #1a1408;
+  --info: #8bb2d0;
+  --info-foreground: #0a151d;
 
-  --border: #29272d;
-  --input: #25232a;
-  --ring: #f0f941;
+  --border: #2b3336;
+  --input: #2b3336;
+  --ring: #6fb3ab;
 
-  /* Stepped down from the UI lime: a 0.95-lightness mark blooms against the
-     dark ground and the old set collapsed under deuteranopia. */
-  --chart-1: #8d991f;
-  --chart-2: #2e9bc7;
-  --chart-3: #7c5bd4;
-  --chart-4: #c9762c;
-  --chart-5: #2fa07a;
+  /* Stepped for the dark surface, same five checks. */
+  --chart-1: #2aa396;
+  --chart-2: #c07a34;
+  --chart-3: #7480cc;
+  --chart-4: #7f9440;
+  --chart-5: #c06a90;
 }
 
 @theme inline {

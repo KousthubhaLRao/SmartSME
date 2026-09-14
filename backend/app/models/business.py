@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import secrets
 import uuid
 from datetime import datetime
 
@@ -27,6 +28,12 @@ class Business(Base):
     tax_rate: Mapped[float] = money(18)
     invoice_prefix: Mapped[str] = mapped_column(
         Text, nullable=False, default="INV", server_default="INV"
+    )
+    #: Routes inbound orders to this business: mail addressed to
+    #: `orders+<token>@...`, or a chat that has sent `/link <token>`.
+    #: Rotatable from Settings, which invalidates the old address.
+    inbox_token: Mapped[str] = mapped_column(
+        Text, nullable=False, unique=True, default=lambda: secrets.token_hex(8)
     )
     created_at: Mapped[datetime] = timestamp()
 

@@ -11,6 +11,7 @@ import { Join } from "@/pages/Join";
 import { PickBusiness } from "@/pages/PickBusiness";
 import { Dashboard } from "@/pages/Dashboard";
 import { SmartInput } from "@/pages/SmartInput";
+import { Inbox } from "@/pages/Inbox";
 import { Sales } from "@/pages/Sales";
 import { SaleInvoice } from "@/pages/SaleInvoice";
 import { Purchases } from "@/pages/Purchases";
@@ -119,6 +120,7 @@ export function App() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/input" element={<SmartInput />} />
+          <Route path="/inbox" element={<Inbox />} />
           <Route path="/sales" element={<Sales />} />
           <Route path="/sales/:id" element={<SaleInvoice />} />
           <Route path="/purchases" element={<Purchases />} />

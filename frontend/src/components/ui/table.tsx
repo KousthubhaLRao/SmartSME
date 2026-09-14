@@ -18,7 +18,7 @@ export function TBody({ className, ...props }: React.HTMLAttributes<HTMLTableSec
 }
 
 export function TR({ className, ...props }: React.HTMLAttributes<HTMLTableRowElement>) {
-  return <tr className={cn("hover:bg-primary/[0.04] transition-colors", className)} {...props} />;
+  return <tr className={cn("hover:bg-muted/60 transition-colors", className)} {...props} />;
 }
 
 export function TH({ className, ...props }: React.ThHTMLAttributes<HTMLTableCellElement>) {

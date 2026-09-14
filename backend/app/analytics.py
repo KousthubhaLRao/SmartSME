@@ -6,7 +6,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .core.utils import money, round2, start_of_day
@@ -38,10 +38,6 @@ class RevenuePoint:
 def get_revenue_series(db: Session, business_id: uuid.UUID, days: int) -> list[RevenuePoint]:
     """Revenue over the last `days`, bucketed to keep the point count readable:
     daily up to ~a month, weekly up to ~3 months, then whole calendar months."""
-    sales = list(
-        db.scalars(select(Sale).where(Sale.business_id == business_id, Sale.status != "cancelled"))
-    )
-
     now = datetime.now()
     today = start_of_day(now)
     end_exclusive = today + timedelta(days=1)
@@ -83,11 +79,25 @@ def get_revenue_series(db: Session, business_id: uuid.UUID, days: int) -> list[R
             end = datetime(year + 1, 1, 1) if month == 12 else datetime(year, month + 1, 1)
             buckets.append((start, end, MONTHS[month - 1], f"{MONTHS[month - 1]} {year}"))
 
+    # Only the window, and only the two columns the buckets need. Loading whole
+    # Sale objects for every sale the business had ever made was the single most
+    # expensive thing the dashboard did.
+    window_start = min(b[0] for b in buckets)
+    window_end = max(b[1] for b in buckets)
+    rows = db.execute(
+        select(Sale.date, Sale.total).where(
+            Sale.business_id == business_id,
+            Sale.status != "cancelled",
+            Sale.date >= window_start,
+            Sale.date < window_end,
+        )
+    ).all()
+
     values = [0.0] * len(buckets)
-    for sale in sales:
+    for sale_date, total in rows:
         for idx, (start, end, _, _) in enumerate(buckets):
-            if start <= sale.date < end:
-                values[idx] = round2(values[idx] + sale.total)
+            if start <= sale_date < end:
+                values[idx] = round2(values[idx] + total)
                 break
 
     return [
@@ -97,92 +107,145 @@ def get_revenue_series(db: Session, business_id: uuid.UUID, days: int) -> list[R
 
 
 def load_overview(db: Session, business_id: uuid.UUID, days: int = 14) -> dict:
-    sales = list(
-        db.scalars(select(Sale).where(Sale.business_id == business_id, Sale.status != "cancelled"))
+    """Everything the dashboard and the report overview show.
+
+    Aggregated in SQL. An earlier version loaded every sale, purchase, expense
+    and line item into Python and summed them there: fine for a demo tenant,
+    over a second and a half at four thousand sales, and linear from there.
+    """
+    live_sale = (Sale.business_id == business_id, Sale.status != "cancelled")
+    live_purchase = (Purchase.business_id == business_id, Purchase.status != "cancelled")
+
+    sale_totals = db.execute(
+        select(
+            func.coalesce(func.sum(Sale.total), 0.0),
+            func.count(Sale.id),
+            # Outstanding never goes negative, the same clamp the Python version used.
+            func.coalesce(func.sum(func.greatest(Sale.total - Sale.amount_paid, 0.0)), 0.0),
+        ).where(*live_sale)
+    ).one()
+    total_sales = round2(sale_totals[0])
+    sales_count = sale_totals[1]
+    receivable_from_sales = round2(sale_totals[2])
+
+    total_purchases = round2(
+        db.scalar(select(func.coalesce(func.sum(Purchase.total), 0.0)).where(*live_purchase)) or 0
     )
-    purchases = list(
-        db.scalars(
-            select(Purchase).where(
-                Purchase.business_id == business_id, Purchase.status != "cancelled"
+    total_expenses = round2(
+        db.scalar(
+            select(func.coalesce(func.sum(Expense.amount), 0.0)).where(
+                Expense.business_id == business_id
             )
         )
+        or 0
     )
-    expenses = list(db.scalars(select(Expense).where(Expense.business_id == business_id)))
-    products = list(db.scalars(select(Product).where(Product.business_id == business_id)))
-    parties = list(db.scalars(select(Party).where(Party.business_id == business_id)))
 
-    sale_items = list(
-        db.execute(
-            select(SaleItem, Sale.party_id)
+    balances = db.execute(
+        select(
+            func.coalesce(
+                func.sum(Party.balance).filter(Party.type == "customer", Party.balance > 0), 0.0
+            ),
+            func.coalesce(
+                func.sum(Party.balance).filter(Party.type == "supplier", Party.balance > 0), 0.0
+            ),
+        ).where(Party.business_id == business_id)
+    ).one()
+    receivable = round2(receivable_from_sales + round2(balances[0]))
+    payable = round2(balances[1])
+
+    stock = db.execute(
+        select(
+            func.coalesce(func.sum(Product.stock * Product.purchase_price), 0.0),
+            func.count(Product.id),
+            func.count(Product.id).filter(Product.stock > Product.low_stock_threshold),
+        ).where(Product.business_id == business_id)
+    ).one()
+    inventory_value = round2(stock[0])
+    product_count = stock[1]
+    healthy_stock = stock[2]
+
+    # Cost of goods sold, joined to the product that was sold rather than
+    # rebuilt from a dictionary in Python.
+    cogs = (
+        db.scalar(
+            select(func.coalesce(func.sum(SaleItem.quantity * Product.purchase_price), 0.0))
+            .select_from(SaleItem)
             .join(Sale, SaleItem.sale_id == Sale.id)
-            .where(Sale.business_id == business_id, Sale.status != "cancelled")
-        ).all()
+            .join(Product, SaleItem.product_id == Product.id)
+            .where(*live_sale)
+        )
+        or 0
     )
-
-    total_sales = round2(sum(s.total for s in sales))
-    total_purchases = round2(sum(p.total for p in purchases))
-    total_expenses = round2(sum(e.amount for e in expenses))
-
-    receivable_from_sales = calculate_outstanding_total(sales)
-    receivable_from_parties = round2(
-        sum(p.balance for p in parties if p.type == "customer" and p.balance > 0)
-    )
-    receivable = round2(receivable_from_sales + receivable_from_parties)
-    payable = round2(sum(p.balance for p in parties if p.type == "supplier" and p.balance > 0))
-    inventory_value = round2(sum(p.stock * p.purchase_price for p in products))
-
-    # Gross profit estimate = sold-quantity revenue minus its cost of goods.
-    product_by_id = {p.id: p for p in products}
-    cogs = 0.0
-    for item, _party_id in sale_items:
-        p = product_by_id.get(item.product_id) if item.product_id else None
-        cogs += (p.purchase_price if p else 0) * item.quantity
     gross_profit = round2(total_sales - cogs)
 
     revenue_series = get_revenue_series(db, business_id, days)
 
-    # Top products by revenue
-    prod_agg: dict[str, float] = {}
-    for item, _ in sale_items:
-        prod_agg[item.description] = prod_agg.get(item.description, 0) + item.line_total
     top_products = [
-        {"label": k, "value": round2(v), "display": _fmt(v)}
-        for k, v in sorted(prod_agg.items(), key=lambda kv: kv[1], reverse=True)[:5]
+        {"label": label, "value": round2(value), "display": _fmt(value)}
+        for label, value in db.execute(
+            select(SaleItem.description, func.sum(SaleItem.line_total))
+            .select_from(SaleItem)
+            .join(Sale, SaleItem.sale_id == Sale.id)
+            .where(*live_sale)
+            .group_by(SaleItem.description)
+            .order_by(func.sum(SaleItem.line_total).desc())
+            .limit(5)
+        ).all()
     ]
 
-    # Top customers by sales total
-    cust_agg: dict[uuid.UUID, float] = {}
-    for s in sales:
-        if s.party_id:
-            cust_agg[s.party_id] = cust_agg.get(s.party_id, 0) + s.total
-    name_by_id = {p.id: p.name for p in parties}
     top_customers = [
-        {"label": name_by_id.get(k, "Unknown"), "value": round2(v), "display": _fmt(v)}
-        for k, v in sorted(cust_agg.items(), key=lambda kv: kv[1], reverse=True)[:5]
+        {"label": name, "value": round2(value), "display": _fmt(value)}
+        for name, value in db.execute(
+            # Grouped by id, not name: two customers can share one, and
+            # merging them would overstate whoever they were merged into.
+            select(Party.name, func.sum(Sale.total))
+            .select_from(Sale)
+            .join(Party, Sale.party_id == Party.id)
+            .where(*live_sale)
+            .group_by(Party.id, Party.name)
+            .order_by(func.sum(Sale.total).desc())
+            .limit(5)
+        ).all()
     ]
 
-    # Expenses by category
-    cat_agg: dict[str, float] = {}
-    for e in expenses:
-        cat_agg[e.category] = cat_agg.get(e.category, 0) + e.amount
     expense_by_category = [
-        {"label": k, "value": round2(v), "display": _fmt(v)}
-        for k, v in sorted(cat_agg.items(), key=lambda kv: kv[1], reverse=True)
+        {"label": category, "value": round2(value), "display": _fmt(value)}
+        for category, value in db.execute(
+            select(Expense.category, func.sum(Expense.amount))
+            .where(Expense.business_id == business_id)
+            .group_by(Expense.category)
+            .order_by(func.sum(Expense.amount).desc())
+        ).all()
     ]
 
-    low_stock = sorted(
-        (p for p in products if p.stock <= p.low_stock_threshold), key=lambda p: p.stock
+    low_stock = list(
+        db.scalars(
+            select(Product)
+            .where(
+                Product.business_id == business_id,
+                Product.stock <= Product.low_stock_threshold,
+            )
+            .order_by(Product.stock.asc())
+            .limit(20)
+        )
     )
 
     # ---- Business health (heuristic 0-100) ----
-    healthy_stock = sum(1 for p in products if p.stock > p.low_stock_threshold)
-    inventory = 100 if not products else _clamp(healthy_stock / len(products) * 100)
+    inventory = 100 if not product_count else _clamp(healthy_stock / product_count * 100)
 
     now = datetime.now()
     cutoff = now - timedelta(days=days)
     prior_cutoff = now - timedelta(days=2 * days)
-    recent_rev = sum(s.total for s in sales if s.date >= cutoff)
-    prior_rev = sum(s.total for s in sales if prior_cutoff <= s.date < cutoff)
+    windows = db.execute(
+        select(
+            func.coalesce(func.sum(Sale.total).filter(Sale.date >= cutoff), 0.0),
+            func.coalesce(
+                func.sum(Sale.total).filter(Sale.date >= prior_cutoff, Sale.date < cutoff), 0.0
+            ),
+        ).where(*live_sale)
+    ).one()
+    recent_rev = windows[0]
+    prior_rev = windows[1]
     if prior_rev > 0:  # noqa: SIM108 - a nested ternary reads worse here
         growth = (recent_rev - prior_rev) / prior_rev
     else:
@@ -211,7 +274,7 @@ def load_overview(db: Session, business_id: uuid.UUID, days: int = 14) -> dict:
             "payable": payable,
             "inventoryValue": inventory_value,
             "grossProfit": gross_profit,
-            "salesCount": len(sales),
+            "salesCount": sales_count,
         },
         "revenueSeries": [
             {"label": r.label, "value": r.value, "full": r.full} for r in revenue_series

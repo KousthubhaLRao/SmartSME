@@ -33,5 +33,10 @@ class Event(Base):
     )
     retry_count: Mapped[int] = count()
     error: Mapped[str | None] = mapped_column(Text)
+    #: When a worker took this event. The sweep needs it to tell a worker that
+    #: died from one that is merely slow; `created_at` cannot answer that,
+    #: because the case the sweep exists for - a broker outage, then a backlog
+    #: draining - is one where every event is old by definition.
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime)
     created_at: Mapped[datetime] = timestamp()
     processed_at: Mapped[datetime | None] = mapped_column(DateTime)

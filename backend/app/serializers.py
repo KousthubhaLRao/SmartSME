@@ -179,7 +179,9 @@ def stock_movement(m: StockMovement, product_name: str | None = None) -> dict:
     }
 
 
-def notification(n: Notification) -> dict:
+def notification(n: Notification, source: dict | None = None) -> dict:
+    """`source` names the rule and event that raised it, resolved by the caller
+    in one query rather than a lookup per row."""
     return {
         "id": str(n.id),
         "type": n.type,
@@ -187,6 +189,9 @@ def notification(n: Notification) -> dict:
         "title": n.title,
         "message": n.message,
         "read": n.read,
+        "eventId": str(n.event_id) if n.event_id else None,
+        "ruleId": str(n.rule_id) if n.rule_id else None,
+        "source": source,
         "createdAt": n.created_at.isoformat(),
     }
 

@@ -52,6 +52,8 @@ def _notify(
     message: str,
     severity: str = "info",
     dedupe: bool = False,
+    event: Event | None = None,
+    rule: WorkflowRule | None = None,
 ) -> None:
     if dedupe:
         existing = db.scalar(
@@ -68,6 +70,8 @@ def _notify(
     db.add(
         Notification(
             business_id=business_id,
+            event_id=event.id if event is not None else None,
+            rule_id=rule.id if rule is not None else None,
             type=type_,
             severity=severity,
             title=title,
@@ -344,6 +348,8 @@ def _execute_action(db: Session, rule: WorkflowRule, event: Event, extras: dict[
             _notify(
                 db,
                 bid,
+                event=event,
+                rule=rule,
                 type_="low_stock",
                 severity="error",
                 title=f"Out of stock: {product.name}",
@@ -355,6 +361,8 @@ def _execute_action(db: Session, rule: WorkflowRule, event: Event, extras: dict[
             _notify(
                 db,
                 bid,
+                event=event,
+                rule=rule,
                 type_="low_stock",
                 severity="warning",
                 title=f"Low stock: {product.name}",
@@ -385,6 +393,8 @@ def _execute_action(db: Session, rule: WorkflowRule, event: Event, extras: dict[
         _notify(
             db,
             bid,
+            event=event,
+            rule=rule,
             type_="workflow",
             severity="warning",
             title=cfg.get("title") or rule.name,
@@ -398,6 +408,8 @@ def _execute_action(db: Session, rule: WorkflowRule, event: Event, extras: dict[
     _notify(
         db,
         bid,
+        event=event,
+        rule=rule,
         type_="workflow",
         severity=cfg.get("severity") or "info",
         title=cfg.get("title") or rule.name,

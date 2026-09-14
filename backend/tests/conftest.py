@@ -317,6 +317,13 @@ GROUP_NAMES = {
     "tests/test_rbac.py": "Roles & throttle",
     "tests/test_pagination.py": "Paging",
     "tests/test_event_actor.py": "Event authors",
+    "tests/test_dispatch.py": "Dispatch",
+    "tests/test_review_regressions.py": "Review regressions",
+    "tests/test_review_regressions2.py": "Review regressions II",
+    "tests/test_inbound.py": "Inbound orders",
+    "tests/test_alerts.py": "Alert log",
+    "tests/test_ai_mocked.py": "AI (mocked)",
+    "tests/test_multilingual.py": "Languages",
 }
 
 OUTCOMES = ("passed", "failed", "error", "skipped", "xfailed", "xpassed")
