@@ -10,6 +10,7 @@ user confirms first, then `publish_draft` runs it through the domain layer.
 from __future__ import annotations
 
 import base64
+import logging
 import re
 import unicodedata
 import uuid
@@ -21,7 +22,7 @@ from sqlalchemy.orm import Session
 from .ai import ocr_space
 from .ai.client import ai_status, has_vision
 from .ai.lexicon import concepts_in
-from .ai.nlp import parse_command
+from .ai.nlp import ParsedCommand, parse_command
 from .ai.ocr import ALLOWED_MEDIA, ParsedInvoice, parse_invoice_image
 from .ai.slip import parse_slip
 from .ai.translit import fold, skeleton, stem
@@ -31,6 +32,8 @@ from .domain import sales as sales_domain
 from .domain.catalog import create_expense
 from .models import Party, Product
 from .schemas import ExpenseInput, LineInput, PurchaseInput, SaleInput
+
+log = logging.getLogger("smartsme.smart_input")
 
 T = TypeVar("T", Party, Product)
 
@@ -219,11 +222,17 @@ def _direction_from_party(matched: Party | None, fallback: str) -> str:
     return "purchase" if matched.type == "supplier" else "sale"
 
 
-def draft_from_text(db: Session, business_id: uuid.UUID, text: str) -> dict[str, Any]:
-    if not text.strip():
-        raise ValueError("Type a command first.")
+def ground_text(
+    parsed: ParsedCommand, parties: list, products: list, note: str = ""
+) -> dict[str, Any]:
+    """Turn a parsed note into a draft against a given catalogue.
 
-    parsed = parse_command(text)
+    Split out from `draft_from_text` so the grounding step can be run against a
+    catalogue that did not come from the database - which is what the accuracy
+    harness in `eval/` needs. Measuring a pipeline through a different code path
+    than the one that ships measures the wrong pipeline, so the evaluation calls
+    this, and so does the app.
+    """
     suggested = {
         "PURCHASE_CREATED": "purchase",
         "EXPENSE_ADDED": "expense",
@@ -232,7 +241,7 @@ def draft_from_text(db: Session, business_id: uuid.UUID, text: str) -> dict[str,
     draft = _empty_draft()
     draft["engine"] = parsed.engine
     draft["date"] = parsed.date
-    draft["note"] = text.strip()
+    draft["note"] = note.strip()
 
     if suggested == "expense":
         draft.update(
@@ -242,7 +251,6 @@ def draft_from_text(db: Session, business_id: uuid.UUID, text: str) -> dict[str,
         )
         return draft
 
-    parties, products = _load_tenant(db, business_id)
     matched_party = best_match(parties, parsed.party)
     effective = _direction_from_party(matched_party, suggested)
 
@@ -298,6 +306,13 @@ def draft_from_text(db: Session, business_id: uuid.UUID, text: str) -> dict[str,
     return draft
 
 
+def draft_from_text(db: Session, business_id: uuid.UUID, text: str) -> dict[str, Any]:
+    if not text.strip():
+        raise ValueError("Type a command first.")
+    parties, products = _load_tenant(db, business_id)
+    return ground_text(parse_command(text), parties, products, note=text)
+
+
 def read_image(base64_data: str, media_type: str) -> tuple[ParsedInvoice, str]:
     """Read an order slip with the best engine configured, and say which one.
 
@@ -317,7 +332,17 @@ def read_image(base64_data: str, media_type: str) -> tuple[ParsedInvoice, str]:
     where the second engine's blind spot is meant to be caught.
     """
     if has_vision():
-        return parse_invoice_image(base64_data, media_type), "vision"
+        try:
+            return parse_invoice_image(base64_data, media_type), "vision"
+        except Exception as err:
+            # A provider that is down should not take the feature with it when a
+            # working one is configured. The draft is labelled with whichever
+            # engine produced it, so the person reviewing knows a crossed-out
+            # line could be sitting in it - which is the only thing the second
+            # engine is worse at.
+            if not ocr_space.enabled():
+                raise
+            log.warning("vision OCR failed (%s); falling back to OCR.space", err)
 
     if ocr_space.enabled():
         try:

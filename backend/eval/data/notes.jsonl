@@ -1,0 +1,84 @@
+// SYNTHETIC. Written by the author to cover the grammar of the five language
+// variants, not collected from shopkeepers. Good for comparing engines against
+// each other on identical input and for catching regressions; not evidence of
+// real-world accuracy. Replace with collected notes before publishing anything.
+//
+// "type" uses the draft vocabulary, which has three values. A note where a
+// customer *wants* something is labelled "sale", because that is what it
+// becomes when the shopkeeper confirms it.
+{"id":"n001","lang":"en","text":"sold 5 kg rice to Anita Stores","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Rice Bag 25kg","quantity":5}]}}
+{"id":"n002","lang":"en","text":"sold 2 packets sugar to Kumar Traders","gold":{"type":"sale","party":"Kumar Traders","items":[{"product":"Sugar Packet 1kg","quantity":2}]}}
+{"id":"n003","lang":"en","text":"bought 10 cooking oil from ABC Suppliers","gold":{"type":"purchase","party":"ABC Suppliers","items":[{"product":"Cooking Oil 1L","quantity":10}]}}
+{"id":"n004","lang":"en","text":"purchased 4 bags wheat flour from Sunrise Wholesale","gold":{"type":"purchase","party":"Sunrise Wholesale","items":[{"product":"Wheat Flour 10kg","quantity":4}]}}
+{"id":"n005","lang":"en","text":"sold 3 tea powder to Ramesh","gold":{"type":"sale","party":"Ramesh","items":[{"product":"Tea Powder 500g","quantity":3}]}}
+{"id":"n006","lang":"en","text":"sold 2 kg toor dal to Ram and Sons for 300","gold":{"type":"sale","party":"Ram and Sons","items":[{"product":"Toor Dal 1kg","quantity":2}],"amount":300}}
+{"id":"n007","lang":"en","text":"paid electricity bill 3200","gold":{"type":"expense","category":"Utilities","amount":3200,"items":[]}}
+{"id":"n008","lang":"en","text":"sold 6 soap bar to Anita Stores","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Soap Bar","quantity":6}]}}
+{"id":"n009","lang":"en","text":"sold 12 biscuit pack to Kumar Traders","gold":{"type":"sale","party":"Kumar Traders","items":[{"product":"Biscuit Pack","quantity":12}]}}
+{"id":"n010","lang":"en","text":"bought 5 kg salt from ABC Suppliers","gold":{"type":"purchase","party":"ABC Suppliers","items":[{"product":"Salt 1kg","quantity":5}]}}
+{"id":"n011","lang":"hi-latn","text":"Anita ko 5 kilo chawal becha","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Rice Bag 25kg","quantity":5}]}}
+{"id":"n012","lang":"hi-latn","text":"Kumar Traders ko 3 packet cheeni becha","gold":{"type":"sale","party":"Kumar Traders","items":[{"product":"Sugar Packet 1kg","quantity":3}]}}
+{"id":"n013","lang":"hi-latn","text":"ABC Suppliers se 4 litre tel kharida","gold":{"type":"purchase","party":"ABC Suppliers","items":[{"product":"Cooking Oil 1L","quantity":4}]}}
+{"id":"n014","lang":"hi-latn","text":"Ramesh ko 2 packet chai becha","gold":{"type":"sale","party":"Ramesh","items":[{"product":"Tea Powder 500g","quantity":2}]}}
+{"id":"n015","lang":"hi-latn","text":"Sunrise Wholesale se 6 bori atta kharida","gold":{"type":"purchase","party":"Sunrise Wholesale","items":[{"product":"Wheat Flour 10kg","quantity":6}]}}
+{"id":"n016","lang":"hi-latn","text":"bijli ka kharch 2400","gold":{"type":"expense","category":"Utilities","amount":2400,"items":[]}}
+{"id":"n017","lang":"hi-latn","text":"Anita ko 10 kilo namak becha","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Salt 1kg","quantity":10}]}}
+{"id":"n018","lang":"hi-latn","text":"Kumar Traders ko 4 sabun becha","gold":{"type":"sale","party":"Kumar Traders","items":[{"product":"Soap Bar","quantity":4}]}}
+{"id":"n019","lang":"hi-latn","text":"Ram and Sons ko 2 kilo dal becha","gold":{"type":"sale","party":"Ram and Sons","items":[{"product":"Toor Dal 1kg","quantity":2}]}}
+{"id":"n020","lang":"hi-latn","text":"ABC Suppliers se 3 packet coffee kharida","gold":{"type":"purchase","party":"ABC Suppliers","items":[{"product":"Coffee Powder 200g","quantity":3}]}}
+{"id":"n021","lang":"hi","text":"अनीता को 5 किलो चावल बेचा","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Rice Bag 25kg","quantity":5}]}}
+{"id":"n022","lang":"hi","text":"कुमार ट्रेडर्स को 3 पैकेट चीनी बेचा","gold":{"type":"sale","party":"Kumar Traders","items":[{"product":"Sugar Packet 1kg","quantity":3}]}}
+{"id":"n023","lang":"hi","text":"अनीता स्टोर्स को 2 किलो दाल बेचा","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Toor Dal 1kg","quantity":2}]}}
+{"id":"n024","lang":"hi","text":"रमेश को 3 पैकेट चाय बेचा","gold":{"type":"sale","party":"Ramesh","items":[{"product":"Tea Powder 500g","quantity":3}]}}
+{"id":"n025","lang":"hi","text":"किराया 8000","gold":{"type":"expense","category":"Rent","amount":8000,"items":[]}}
+{"id":"n026","lang":"hi","text":"अनीता को 6 साबुन बेचा","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Soap Bar","quantity":6}]}}
+{"id":"n027","lang":"hi","text":"5 किलो चावल अनीता को बेचा","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Rice Bag 25kg","quantity":5}]}}
+{"id":"n028","lang":"hi","text":"कुमार को 10 किलो नमक बेचा","gold":{"type":"sale","party":"Kumar Traders","items":[{"product":"Salt 1kg","quantity":10}]}}
+{"id":"n029","lang":"hi","text":"अनीता को 4 पैकेट बिस्कुट बेचा","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Biscuit Pack","quantity":4}]}}
+{"id":"n030","lang":"hi","text":"बिजली का खर्च 2400","gold":{"type":"expense","category":"Utilities","amount":2400,"items":[]}}
+{"id":"n031","lang":"kn-latn","text":"Anita ge 5 kilo akki maride","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Rice Bag 25kg","quantity":5}]}}
+{"id":"n032","lang":"kn-latn","text":"Kumar Traders ge 3 packet sakkare maride","gold":{"type":"sale","party":"Kumar Traders","items":[{"product":"Sugar Packet 1kg","quantity":3}]}}
+{"id":"n033","lang":"kn-latn","text":"ABC Suppliers inda 4 litre enne kharidiside","gold":{"type":"purchase","party":"ABC Suppliers","items":[{"product":"Cooking Oil 1L","quantity":4}]}}
+{"id":"n034","lang":"kn-latn","text":"Ramesh ge 2 packet chaha maride","gold":{"type":"sale","party":"Ramesh","items":[{"product":"Tea Powder 500g","quantity":2}]}}
+{"id":"n035","lang":"kn-latn","text":"Anita ge 10 kilo uppu maride","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Salt 1kg","quantity":10}]}}
+{"id":"n036","lang":"kn-latn","text":"badige 8000 kharchu","gold":{"type":"expense","category":"Rent","amount":8000,"items":[]}}
+{"id":"n037","lang":"kn-latn","text":"Kumar Traders ge 4 sabunu maride","gold":{"type":"sale","party":"Kumar Traders","items":[{"product":"Soap Bar","quantity":4}]}}
+{"id":"n038","lang":"kn-latn","text":"Sunrise Wholesale inda 6 chila hittu kharidiside","gold":{"type":"purchase","party":"Sunrise Wholesale","items":[{"product":"Wheat Flour 10kg","quantity":6}]}}
+{"id":"n039","lang":"kn-latn","text":"Anita ge 2 kilo bele maride","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Toor Dal 1kg","quantity":2}]}}
+{"id":"n040","lang":"kn-latn","text":"Ramesh ge 3 packet kaapi maride","gold":{"type":"sale","party":"Ramesh","items":[{"product":"Coffee Powder 200g","quantity":3}]}}
+{"id":"n041","lang":"kn","text":"ಅನಿತಾಗೆ ೫ ಕಿಲೋ ಅಕ್ಕಿ ಮಾರಿದೆ","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Rice Bag 25kg","quantity":5}]}}
+{"id":"n042","lang":"kn","text":"ಅನಿತಾ ಸ್ಟೋರ್ಸ್ ಗೆ ೩ ಪ್ಯಾಕೆಟ್ ಸಕ್ಕರೆ ಮಾರಿದೆ","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Sugar Packet 1kg","quantity":3}]}}
+{"id":"n043","lang":"kn","text":"ರಮೇಶ್ ಗೆ ೨ ಪ್ಯಾಕೆಟ್ ಚಹಾ ಮಾರಿದೆ","gold":{"type":"sale","party":"Ramesh","items":[{"product":"Tea Powder 500g","quantity":2}]}}
+{"id":"n044","lang":"kn","text":"ಬಾಡಿಗೆ ೮೦೦೦ ಖರ್ಚು","gold":{"type":"expense","category":"Rent","amount":8000,"items":[]}}
+{"id":"n045","lang":"kn","text":"ಅನಿತಾಗೆ ೧೦ ಕಿಲೋ ಉಪ್ಪು ಮಾರಿದೆ","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Salt 1kg","quantity":10}]}}
+{"id":"n046","lang":"kn","text":"ಅನಿತಾಗೆ ೪ ಸಾಬೂನು ಮಾರಿದೆ","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Soap Bar","quantity":4}]}}
+{"id":"n047","lang":"kn","text":"ಅನಿತಾಗೆ ೨ ಕಿಲೋ ಬೇಳೆ ಮಾರಿದೆ","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Toor Dal 1kg","quantity":2}]}}
+{"id":"n048","lang":"kn","text":"ವಿದ್ಯುತ್ ಖರ್ಚು ೨೪೦೦","gold":{"type":"expense","category":"Utilities","amount":2400,"items":[]}}
+{"id":"n049","lang":"kn","text":"ಅನಿತಾಗೆ ೬ ಬಿಸ್ಕತ್ತು ಮಾರಿದೆ","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Biscuit Pack","quantity":6}]}}
+{"id":"n050","lang":"kn","text":"ಅನಿತಾಗೆ ೩ ಪ್ಯಾಕೆಟ್ ಕಾಫಿ ಮಾರಿದೆ","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Coffee Powder 200g","quantity":3}]}}
+// --- messier, the way a phone keyboard actually gets used -------------------
+// Added after the first 50 scored 100% on the heuristic parser, which says
+// more about who wrote them than about the parser. No verb, no capitals,
+// typos, two items in one line, scripts mixed inside one sentence. Still
+// author-written, so still not evidence - but at least it can tell engines
+// apart, which a set everything gets right cannot.
+{"id":"n051","lang":"en","text":"5kg rice anita stores","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Rice Bag 25kg","quantity":5}]}}
+{"id":"n052","lang":"hi-latn","text":"anita ko 5kg chawal","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Rice Bag 25kg","quantity":5}]}}
+{"id":"n053","lang":"en","text":"ramesh 2 kg dal","gold":{"type":"sale","party":"Ramesh","items":[{"product":"Toor Dal 1kg","quantity":2}]}}
+{"id":"n054","lang":"en","text":"sold rice 5 kg to anita stores","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Rice Bag 25kg","quantity":5}]}}
+{"id":"n055","lang":"hi-latn","text":"anitha stores ko 3 packet sugur becha","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Sugar Packet 1kg","quantity":3}]}}
+{"id":"n056","lang":"en","text":"kumar traders - 4 soap","gold":{"type":"sale","party":"Kumar Traders","items":[{"product":"Soap Bar","quantity":4}]}}
+{"id":"n057","lang":"hi-latn","text":"abc suppliers se 10 tel liya","gold":{"type":"purchase","party":"ABC Suppliers","items":[{"product":"Cooking Oil 1L","quantity":10}]}}
+{"id":"n058","lang":"kn-latn","text":"Anita ಗೆ 5 kilo ಅಕ್ಕಿ","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Rice Bag 25kg","quantity":5}]}}
+{"id":"n059","lang":"hi","text":"अनीता को 2 packet chai","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Tea Powder 500g","quantity":2}]}}
+{"id":"n060","lang":"hi-latn","text":"sir 5 bag rice bhejo anita stores","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Rice Bag 25kg","quantity":5}]}}
+{"id":"n061","lang":"en","text":"10 kg rice anita stores 1350","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Rice Bag 25kg","quantity":10}],"amount":1350}}
+{"id":"n062","lang":"hi-latn","text":"chawal 5 kilo anita ko becha","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Rice Bag 25kg","quantity":5}]}}
+{"id":"n063","lang":"hi-latn","text":"ramesh ko 2 chai aur 3 biscuit becha","gold":{"type":"sale","party":"Ramesh","items":[{"product":"Tea Powder 500g","quantity":2},{"product":"Biscuit Pack","quantity":3}]}}
+{"id":"n064","lang":"en","text":"anita stores 5 rice 2 sugar","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Rice Bag 25kg","quantity":5},{"product":"Sugar Packet 1kg","quantity":2}]}}
+{"id":"n065","lang":"hi-latn","text":"salary 12000 diya","gold":{"type":"expense","category":"Salary","amount":12000,"items":[]}}
+{"id":"n066","lang":"en","text":"petrol 800","gold":{"type":"expense","category":"Fuel","amount":800,"items":[]}}
+{"id":"n067","lang":"kn","text":"ಅನಿತಾಗೆ ೫ ಕಿಲೋ ಅಕ್ಕಿ","gold":{"type":"sale","party":"Anita Stores","items":[{"product":"Rice Bag 25kg","quantity":5}]}}
+{"id":"n068","lang":"en","text":"sold 5 rice bag to ram and sons","gold":{"type":"sale","party":"Ram and Sons","items":[{"product":"Rice Bag 25kg","quantity":5}]}}
+{"id":"n069","lang":"hi-latn","text":"ram ko 3 soap becha","gold":{"type":"sale","party":"Ram and Sons","items":[{"product":"Soap Bar","quantity":3}]}}
+{"id":"n070","lang":"kn-latn","text":"Ramesh ge 6 biscuit maride","gold":{"type":"sale","party":"Ramesh","items":[{"product":"Biscuit Pack","quantity":6}]}}

@@ -269,3 +269,49 @@ def test_with_no_engine_at_all_the_error_says_what_to_do(client, monkeypatch):
 
     message = str(err.value)
     assert "GOOGLE_API_KEY" in message and "OCR_SPACE_API_KEY" in message
+
+
+def test_a_broken_vision_provider_falls_back_instead_of_failing(client, monkeypatch):
+    """Both engines configured and the model is having a bad day.
+
+    Erroring out here would be the wrong call: the free engine is right there,
+    it reads the handwriting fine, and the draft it produces is labelled with
+    its own name so the person reviewing knows to check for a crossed-out line.
+    """
+    import base64
+
+    from app import smart_input
+    from app.ai import ocr_space
+
+    monkeypatch.setattr(smart_input, "has_vision", lambda: True)
+    monkeypatch.setattr(
+        smart_input,
+        "parse_invoice_image",
+        lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("503 model overloaded")),
+    )
+    monkeypatch.setattr(ocr_space, "enabled", lambda: True)
+    monkeypatch.setattr(ocr_space, "read_text", lambda *_a, **_k: LATHA)
+
+    invoice, engine = smart_input.read_image(base64.b64encode(b"x").decode(), "image/jpeg")
+    assert engine == "ocr.space"
+    assert invoice.party == "Latha"
+
+
+def test_a_broken_vision_provider_with_no_fallback_still_reports_the_error(client, monkeypatch):
+    """Nothing to fall back to, so the real cause must reach the caller rather
+    than being swallowed into a vaguer message."""
+    import base64
+
+    from app import smart_input
+    from app.ai import ocr_space
+
+    monkeypatch.setattr(smart_input, "has_vision", lambda: True)
+    monkeypatch.setattr(
+        smart_input,
+        "parse_invoice_image",
+        lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("503 model overloaded")),
+    )
+    monkeypatch.setattr(ocr_space, "enabled", lambda: False)
+
+    with pytest.raises(RuntimeError, match="503"):
+        smart_input.read_image(base64.b64encode(b"x").decode(), "image/jpeg")

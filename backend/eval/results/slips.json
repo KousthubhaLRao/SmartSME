@@ -1,0 +1,510 @@
+{
+  "slips.vision": [
+    {
+      "id": "s01",
+      "engine_used": "vision",
+      "seconds": 1.59,
+      "party": "A. Sharma",
+      "phone": "6969696969",
+      "items": [
+        {
+          "product": "Product A",
+          "quantity": 3
+        },
+        {
+          "product": "Cement bag",
+          "quantity": 23
+        }
+      ]
+    },
+    {
+      "id": "s02",
+      "engine_used": "vision",
+      "seconds": 1.19,
+      "party": "Karthik",
+      "phone": "7894561230",
+      "items": [
+        {
+          "product": "Chair",
+          "quantity": 4
+        },
+        {
+          "product": "table (Small)",
+          "quantity": 1
+        },
+        {
+          "product": "Screws packet",
+          "quantity": 8
+        }
+      ]
+    },
+    {
+      "id": "s03",
+      "engine_used": "vision",
+      "seconds": 1.22,
+      "party": "Latha",
+      "phone": "9880011223",
+      "items": [
+        {
+          "product": "Dal",
+          "quantity": 5
+        },
+        {
+          "product": "Rice",
+          "quantity": 10
+        },
+        {
+          "product": "Salt",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "s04",
+      "engine_used": "vision",
+      "seconds": 1.7,
+      "party": "Rakesh",
+      "phone": "9876543210",
+      "items": [
+        {
+          "product": "Tiles",
+          "quantity": 2
+        },
+        {
+          "product": "Paint (Blue)",
+          "quantity": 1
+        },
+        {
+          "product": "Nails",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "s05",
+      "engine_used": "vision",
+      "seconds": 1.58,
+      "party": "Meena",
+      "phone": "9001122334",
+      "items": [
+        {
+          "product": "Sugar",
+          "quantity": 3
+        },
+        {
+          "product": "Tea Powder",
+          "quantity": 2
+        },
+        {
+          "product": "Coffee",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "id": "s06",
+      "engine_used": "vision",
+      "seconds": 1.25,
+      "party": "Imran",
+      "phone": "7012345678",
+      "items": [
+        {
+          "product": "Cement",
+          "quantity": 3
+        },
+        {
+          "product": "Sand",
+          "quantity": 4
+        },
+        {
+          "product": "Angle Grinder",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "id": "s07",
+      "engine_used": "vision",
+      "seconds": 1.48,
+      "party": "Priya M.",
+      "phone": "9123456780",
+      "items": [
+        {
+          "product": "Wash Basin",
+          "quantity": 1
+        },
+        {
+          "product": "Taps",
+          "quantity": 2
+        },
+        {
+          "product": "PVC pipe",
+          "quantity": 6
+        }
+      ]
+    },
+    {
+      "id": "s08",
+      "engine_used": "vision",
+      "seconds": 1.41,
+      "party": "V. Rao",
+      "phone": "9443311220",
+      "items": [
+        {
+          "product": "LED Bulb",
+          "quantity": 12
+        },
+        {
+          "product": "Switch Board",
+          "quantity": 4
+        },
+        {
+          "product": "Wire (Red)",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "s09",
+      "engine_used": "vision",
+      "seconds": 1.25,
+      "party": "Neha",
+      "phone": "8056789123",
+      "items": [
+        {
+          "product": "Curtains",
+          "quantity": 2
+        },
+        {
+          "product": "rod (6 ft)",
+          "quantity": 1
+        },
+        {
+          "product": "brackets",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "id": "s10",
+      "engine_used": "vision",
+      "seconds": 1.33,
+      "party": "S. Khan",
+      "phone": "9988776655",
+      "items": [
+        {
+          "product": "Rice",
+          "quantity": 10
+        },
+        {
+          "product": "Atta",
+          "quantity": 5
+        },
+        {
+          "product": "Cooking Oil",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "s11",
+      "engine_used": "vision",
+      "seconds": 1.73,
+      "party": "Sunil",
+      "phone": "9036567890",
+      "items": [
+        {
+          "product": "Grinder",
+          "quantity": 1
+        },
+        {
+          "product": "Mixer",
+          "quantity": 1
+        },
+        {
+          "product": "Spare Jar",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "id": "s12",
+      "engine_used": "vision",
+      "seconds": 1.58,
+      "party": "Dinesh",
+      "phone": "9988007766",
+      "items": [
+        {
+          "product": "Bricks",
+          "quantity": 20
+        },
+        {
+          "product": "Cement",
+          "quantity": 3
+        },
+        {
+          "product": "White Cement",
+          "quantity": 1
+        }
+      ]
+    }
+  ],
+  "slips.ocrspace": [
+    {
+      "id": "s01",
+      "engine_used": "ocr.space",
+      "seconds": 1.66,
+      "party": "A. Sharma",
+      "phone": "6969696969",
+      "items": [
+        {
+          "product": "Product A",
+          "quantity": 3
+        },
+        {
+          "product": "Produet B",
+          "quantity": 4
+        },
+        {
+          "product": "Cement bag",
+          "quantity": 23
+        }
+      ]
+    },
+    {
+      "id": "s02",
+      "engine_used": "ocr.space",
+      "seconds": 1.58,
+      "party": "Karthik",
+      "phone": "7894561230",
+      "items": [
+        {
+          "product": "Chair",
+          "quantity": 4
+        },
+        {
+          "product": "table (Small)",
+          "quantity": 1
+        },
+        {
+          "product": "Screws packet",
+          "quantity": 8
+        }
+      ]
+    },
+    {
+      "id": "s03",
+      "engine_used": "ocr.space",
+      "seconds": 1.58,
+      "party": "Latha",
+      "phone": "9880011223",
+      "items": [
+        {
+          "product": "Dal",
+          "quantity": 5
+        },
+        {
+          "product": "Rice",
+          "quantity": 10
+        },
+        {
+          "product": "Salt",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "s04",
+      "engine_used": "ocr.space",
+      "seconds": 1.94,
+      "party": "Rakesh",
+      "phone": "9876543210",
+      "items": [
+        {
+          "product": "Tiles",
+          "quantity": 2
+        },
+        {
+          "product": "Paint (Blue)",
+          "quantity": 1
+        },
+        {
+          "product": "Nails",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "s05",
+      "engine_used": "ocr.space",
+      "seconds": 1.59,
+      "party": "Meena",
+      "phone": "9001122334",
+      "items": [
+        {
+          "product": "Sugar",
+          "quantity": 3
+        },
+        {
+          "product": "Tea Powder",
+          "quantity": 2
+        },
+        {
+          "product": "Coffee",
+          "quantity": 1
+        },
+        {
+          "product": "Coffee",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "id": "s06",
+      "engine_used": "ocr.space",
+      "seconds": 1.84,
+      "party": "Imran",
+      "phone": "7012345678",
+      "items": [
+        {
+          "product": "Cement",
+          "quantity": 3
+        },
+        {
+          "product": "Sand",
+          "quantity": 4
+        },
+        {
+          "product": "Angle Grinder",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "id": "s07",
+      "engine_used": "ocr.space",
+      "seconds": 1.89,
+      "party": "Priya M",
+      "phone": "9123456780",
+      "items": [
+        {
+          "product": "Wash Basin",
+          "quantity": 1
+        },
+        {
+          "product": "Taps",
+          "quantity": 2
+        },
+        {
+          "product": "PVC pipe",
+          "quantity": 6
+        }
+      ]
+    },
+    {
+      "id": "s08",
+      "engine_used": "ocr.space",
+      "seconds": 2.52,
+      "party": "V. Rao",
+      "phone": "9443311220",
+      "items": [
+        {
+          "product": "LED Bulb",
+          "quantity": 12
+        },
+        {
+          "product": "Switch Board",
+          "quantity": 4
+        },
+        {
+          "product": "Wire (Red)",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "s09",
+      "engine_used": "ocr.space",
+      "seconds": 2.47,
+      "party": "Neha",
+      "phone": "8056789123",
+      "items": [
+        {
+          "product": "Curtains",
+          "quantity": 2
+        },
+        {
+          "product": "rod (6 ft)",
+          "quantity": 1
+        },
+        {
+          "product": "brackets",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "id": "s10",
+      "engine_used": "ocr.space",
+      "seconds": 1.88,
+      "party": "S. Khan",
+      "phone": "9988776655",
+      "items": [
+        {
+          "product": "Rice",
+          "quantity": 10
+        },
+        {
+          "product": "Wheat Atta",
+          "quantity": 5
+        },
+        {
+          "product": "Ur Cooking Oil",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "s11",
+      "engine_used": "ocr.space",
+      "seconds": 1.55,
+      "party": "Sunil",
+      "phone": "9036567890",
+      "items": [
+        {
+          "product": "Grinder",
+          "quantity": 1
+        },
+        {
+          "product": "Mixer",
+          "quantity": 1
+        },
+        {
+          "product": "Spare Jar",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "id": "s12",
+      "engine_used": "ocr.space",
+      "seconds": 2.5,
+      "party": "Dinesh",
+      "phone": "9988007766",
+      "items": [
+        {
+          "product": "Bricks",
+          "quantity": 20
+        },
+        {
+          "product": "Cement",
+          "quantity": 3
+        },
+        {
+          "product": "White Cement",
+          "quantity": 1
+        }
+      ]
+    }
+  ]
+}

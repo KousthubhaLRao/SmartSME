@@ -137,8 +137,9 @@ exact `/link` line to send it. Full walkthrough:
 window, and set a password. That employee can record sales but will not see
 Workflow or Team, and cannot delete anything.
 
-**6. The tests.** `cd backend; .venv\Scripts\python -m pytest -q` - 260 of
-them, about ten seconds.
+**6. The tests.** `cd backend; .venv\Scripts\python -m pytest -q` - 364 of
+them, about ten seconds. Accuracy is measured separately and on purpose:
+[backend/eval](backend/eval/README.md).
 
 **7. Under load** (optional). `python -m loadtest.seed` then the Locust command
 in [Load testing](docs/performance.md#load-testing).
@@ -161,6 +162,7 @@ This page covers getting SmartSME running. Everything else lives in
 | **[Authentication, roles and permissions](docs/auth.md)** | Sessions, the four roles, how RBAC is enforced, and sign-in throttling. |
 | **[Performance and load testing](docs/performance.md)** | Indexes, pagination, pool sizing, and driving the whole app with Locust. |
 | **[The test suite](docs/testing.md)** | What is covered, how to run it, and how to add to it. |
+| **[Accuracy evaluation](docs/evaluation.md)** | Measured precision/recall/F1 per engine, and what the numbers do not prove. |
 | **[Deployment](docs/deployment.md)** | Taking it beyond a laptop. |
 | **[HTTP API](docs/api.md)** | Every endpoint, and the conventions they share. |
 | **[Design system](docs/design.md)** | Colour, type, spacing and the component vocabulary. |

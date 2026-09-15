@@ -15,13 +15,18 @@ import { Can, PERMISSIONS } from "@/lib/session";
 import { formatDate, money, toDateInputValue } from "@/lib/utils";
 
 const CATEGORIES = [
+  // Must match CATEGORIES in backend/app/ai/categories.py: the parser pins
+  // whatever it extracts to that list, and a value the form cannot offer is a
+  // row nobody can edit back.
   "Rent",
   "Utilities",
   "Salary",
   "Transport",
+  "Fuel",
   "Supplies",
-  "Marketing",
   "Maintenance",
+  "Marketing",
+  "Taxes",
   "General",
 ];
 

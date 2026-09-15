@@ -10,24 +10,28 @@ What is covered, how to run it, and how to add to it.
 
 ```bash
 cd backend
-.venv/Scripts/python -m pytest -q              # 260 tests
+.venv/Scripts/python -m pytest -q              # 364 tests
 ```
 
 ```
 ================================ test summary =================================
   AI (mocked)        26 passed
-  Alert log           9 passed
-  Dispatch            8 passed
-  Domain units       42 passed
-  Endpoint smoke     36 passed
-  Event authors       6 passed
-  Inbound orders     28 passed
-  Languages          46 passed
-  Paging               25 passed
-  Review regressions    8 passed
-  Roles & throttle     26 passed
+  AI (mocked)             26 passed
+  Alert log                9 passed
+  Dispatch                 8 passed
+  Domain units            42 passed
+  Endpoint smoke          36 passed
+  Event authors            6 passed
+  Inbound orders          31 passed
+  Languages               46 passed
+  Order slips (OCR)       21 passed
+  Paging                  25 passed
+  Review regressions       8 passed
+  Review regressions II   15 passed
+  Roles & throttle        26 passed
+  Translation             65 passed
 -------------------------------------------------------------------------------
-  260 passed in 10.75s
+  364 passed in 9.70s
 ```
 
 Hooks in `tests/conftest.py` replace pytest's default report order. Pytest prints
@@ -144,3 +148,21 @@ the prompts stay verbatim.
 
 ---
 
+
+## What the test suite does not measure
+
+Every test here checks that the code does what it was written to do. None of
+them can say whether reading "Anita ko 5 kilo chawal becha" produces the *right*
+sale, because "right" is a judgement about meaning rather than a property of the
+code.
+
+Worth being blunt about a second gap: **the suite never calls a real model.**
+`conftest.py` clears every API key so runs are hermetic and free, the language
+tests exercise `heuristic_parse` (the regex fallback), and the AI tests use a
+fake provider. That is the correct design for a suite that must finish in ten
+seconds on every save - and it means the component the product is named after is
+not covered by any of it.
+
+Both gaps are the job of the accuracy harness, which is opt-in, hits the real
+providers, and scores against human-written gold labels:
+[backend/eval/README.md](../backend/eval/README.md).

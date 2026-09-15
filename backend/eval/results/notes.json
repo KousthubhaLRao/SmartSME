@@ -1,0 +1,1775 @@
+{
+  "notes.heuristic": [
+    {
+      "id": "n001",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n002",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Kumar Traders",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Sugar Packet 1kg",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "n003",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "ABC Suppliers",
+      "type": "purchase",
+      "items": [
+        {
+          "product": "Cooking Oil 1L",
+          "quantity": 10
+        }
+      ]
+    },
+    {
+      "id": "n004",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Sunrise Wholesale",
+      "type": "purchase",
+      "items": [
+        {
+          "product": "Wheat Flour 10kg",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "id": "n005",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Ramesh",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Tea Powder 500g",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "id": "n006",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Ram and Sons",
+      "type": "sale",
+      "amount": 300.0,
+      "items": [
+        {
+          "product": "Toor Dal 1kg",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "n007",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": null,
+      "type": "expense",
+      "amount": 3200.0,
+      "category": "Utilities",
+      "items": []
+    },
+    {
+      "id": "n008",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Soap Bar",
+          "quantity": 6
+        }
+      ]
+    },
+    {
+      "id": "n009",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Kumar Traders",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Biscuit Pack",
+          "quantity": 12
+        }
+      ]
+    },
+    {
+      "id": "n010",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "ABC Suppliers",
+      "type": "purchase",
+      "items": [
+        {
+          "product": "Salt 1kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n011",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n012",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Kumar Traders",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Sugar Packet 1kg",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "id": "n013",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "ABC Suppliers",
+      "type": "purchase",
+      "items": [
+        {
+          "product": "Cooking Oil 1L",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "id": "n014",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Ramesh",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Tea Powder 500g",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "n015",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Sunrise Wholesale",
+      "type": "purchase",
+      "items": [
+        {
+          "product": "Wheat Flour 10kg",
+          "quantity": 6
+        }
+      ]
+    },
+    {
+      "id": "n016",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": null,
+      "type": "expense",
+      "amount": 2400.0,
+      "category": "Utilities",
+      "items": []
+    },
+    {
+      "id": "n017",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Salt 1kg",
+          "quantity": 10
+        }
+      ]
+    },
+    {
+      "id": "n018",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Kumar Traders",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Soap Bar",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "id": "n019",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Ram and Sons",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Toor Dal 1kg",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "n020",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "ABC Suppliers",
+      "type": "purchase",
+      "items": [
+        {
+          "product": "Coffee Powder 200g",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "id": "n021",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n022",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Kumar Traders",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Sugar Packet 1kg",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "id": "n023",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Toor Dal 1kg",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "n024",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Ramesh",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Tea Powder 500g",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "id": "n025",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": null,
+      "type": "expense",
+      "amount": 8000.0,
+      "category": "Rent",
+      "items": []
+    },
+    {
+      "id": "n026",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Soap Bar",
+          "quantity": 6
+        }
+      ]
+    },
+    {
+      "id": "n027",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n028",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Kumar Traders",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Salt 1kg",
+          "quantity": 10
+        }
+      ]
+    },
+    {
+      "id": "n029",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Biscuit Pack",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "id": "n030",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": null,
+      "type": "expense",
+      "amount": 2400.0,
+      "category": "Utilities",
+      "items": []
+    },
+    {
+      "id": "n031",
+      "engine_used": "Heuristic",
+      "seconds": 0.02,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n032",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Kumar Traders",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Sugar Packet 1kg",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "id": "n033",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "ABC Suppliers",
+      "type": "purchase",
+      "items": [
+        {
+          "product": "Cooking Oil 1L",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "id": "n034",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Ramesh",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Tea Powder 500g",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "n035",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Salt 1kg",
+          "quantity": 10
+        }
+      ]
+    },
+    {
+      "id": "n036",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": null,
+      "type": "expense",
+      "amount": 8000.0,
+      "category": "Rent",
+      "items": []
+    },
+    {
+      "id": "n037",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Kumar Traders",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Soap Bar",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "id": "n038",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Sunrise Wholesale",
+      "type": "purchase",
+      "items": [
+        {
+          "product": "Wheat Flour 10kg",
+          "quantity": 6
+        }
+      ]
+    },
+    {
+      "id": "n039",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Toor Dal 1kg",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "n040",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Ramesh",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Coffee Powder 200g",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "id": "n041",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n042",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Sugar Packet 1kg",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "id": "n043",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Ramesh",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Tea Powder 500g",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "n044",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": null,
+      "type": "expense",
+      "amount": 8000.0,
+      "category": "Rent",
+      "items": []
+    },
+    {
+      "id": "n045",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Salt 1kg",
+          "quantity": 10
+        }
+      ]
+    },
+    {
+      "id": "n046",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Soap Bar",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "id": "n047",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Toor Dal 1kg",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "n048",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": null,
+      "type": "expense",
+      "amount": 2400.0,
+      "category": "Utilities",
+      "items": []
+    },
+    {
+      "id": "n049",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Biscuit Pack",
+          "quantity": 6
+        }
+      ]
+    },
+    {
+      "id": "n050",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Coffee Powder 200g",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "id": "n051",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": null,
+      "type": "sale",
+      "items": [
+        {
+          "product": "Item",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "id": "n052",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Item",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "id": "n053",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": null,
+      "type": "sale",
+      "items": [
+        {
+          "product": "Toor Dal 1kg",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "n054",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Item",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n055",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Sugar Packet 1kg",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "id": "n056",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": null,
+      "type": "sale",
+      "items": [
+        {
+          "product": "Soap Bar",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "id": "n057",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "ABC Suppliers",
+      "type": "purchase",
+      "items": [
+        {
+          "product": "Cooking Oil 1L",
+          "quantity": 10
+        }
+      ]
+    },
+    {
+      "id": "n058",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n059",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Tea Powder 500g",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "n060",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": null,
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n061",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": null,
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 10
+        }
+      ]
+    },
+    {
+      "id": "n062",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Item",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n063",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Ramesh",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Tea Powder 500g",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "n064",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": null,
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n065",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": null,
+      "type": "expense",
+      "amount": 12000.0,
+      "category": "Salary",
+      "items": []
+    },
+    {
+      "id": "n066",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": null,
+      "type": "expense",
+      "amount": 800.0,
+      "category": "Fuel",
+      "items": []
+    },
+    {
+      "id": "n067",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n068",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Ram and Sons",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n069",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Ram and Sons",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Soap Bar",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "id": "n070",
+      "engine_used": "Heuristic",
+      "seconds": 0.0,
+      "party": "Ramesh",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Biscuit Pack",
+          "quantity": 6
+        }
+      ]
+    }
+  ],
+  "notes.google": [
+    {
+      "id": "n001",
+      "engine_used": "Google Gemini",
+      "seconds": 6.27,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n002",
+      "engine_used": "Google Gemini",
+      "seconds": 2.34,
+      "party": "Kumar Traders",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Sugar Packet 1kg",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "n003",
+      "engine_used": "Google Gemini",
+      "seconds": 1.27,
+      "party": "ABC Suppliers",
+      "type": "purchase",
+      "items": [
+        {
+          "product": "Cooking Oil 1L",
+          "quantity": 10
+        }
+      ]
+    },
+    {
+      "id": "n004",
+      "engine_used": "Google Gemini",
+      "seconds": 0.98,
+      "party": "Sunrise Wholesale",
+      "type": "purchase",
+      "items": [
+        {
+          "product": "Wheat Flour 10kg",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "id": "n005",
+      "engine_used": "Google Gemini",
+      "seconds": 0.94,
+      "party": "Ramesh",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Tea Powder 500g",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "id": "n006",
+      "engine_used": "Google Gemini",
+      "seconds": 0.94,
+      "party": "Ram and Sons",
+      "type": "sale",
+      "amount": 300.0,
+      "items": [
+        {
+          "product": "Toor Dal 1kg",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "n007",
+      "engine_used": "Google Gemini",
+      "seconds": 1.02,
+      "party": null,
+      "type": "expense",
+      "amount": 3200.0,
+      "category": "Utilities",
+      "items": []
+    },
+    {
+      "id": "n008",
+      "engine_used": "Google Gemini",
+      "seconds": 0.94,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Soap Bar",
+          "quantity": 6
+        }
+      ]
+    },
+    {
+      "id": "n009",
+      "engine_used": "Google Gemini",
+      "seconds": 1.02,
+      "party": "Kumar Traders",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Biscuit Pack",
+          "quantity": 12
+        }
+      ]
+    },
+    {
+      "id": "n010",
+      "engine_used": "Google Gemini",
+      "seconds": 0.98,
+      "party": "ABC Suppliers",
+      "type": "purchase",
+      "items": [
+        {
+          "product": "Salt 1kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n011",
+      "engine_used": "Google Gemini",
+      "seconds": 1.11,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n012",
+      "engine_used": "Google Gemini",
+      "seconds": 1.02,
+      "party": "Kumar Traders",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Sugar Packet 1kg",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "id": "n013",
+      "engine_used": "Google Gemini",
+      "seconds": 0.91,
+      "party": "ABC Suppliers",
+      "type": "purchase",
+      "items": [
+        {
+          "product": "Cooking Oil 1L",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "id": "n014",
+      "engine_used": "Google Gemini",
+      "seconds": 1.12,
+      "party": "Ramesh",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Tea Powder 500g",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "n015",
+      "engine_used": "Google Gemini",
+      "seconds": 0.86,
+      "party": "Sunrise Wholesale",
+      "type": "purchase",
+      "items": [
+        {
+          "product": "Wheat Flour 10kg",
+          "quantity": 6
+        }
+      ]
+    },
+    {
+      "id": "n016",
+      "engine_used": "Google Gemini",
+      "seconds": 0.86,
+      "party": null,
+      "type": "expense",
+      "amount": 2400.0,
+      "category": "Utilities",
+      "items": []
+    },
+    {
+      "id": "n017",
+      "engine_used": "Google Gemini",
+      "seconds": 1.03,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Salt 1kg",
+          "quantity": 10
+        }
+      ]
+    },
+    {
+      "id": "n018",
+      "engine_used": "Google Gemini",
+      "seconds": 1.12,
+      "party": "Kumar Traders",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Soap Bar",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "id": "n019",
+      "engine_used": "Google Gemini",
+      "seconds": 1.22,
+      "party": "Ram and Sons",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Toor Dal 1kg",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "n020",
+      "engine_used": "Google Gemini",
+      "seconds": 0.92,
+      "party": "ABC Suppliers",
+      "type": "purchase",
+      "items": [
+        {
+          "product": "Coffee Powder 200g",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "id": "n021",
+      "engine_used": "Google Gemini",
+      "seconds": 1.28,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n022",
+      "engine_used": "Google Gemini",
+      "seconds": 1.17,
+      "party": "Kumar Traders",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Sugar Packet 1kg",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "id": "n023",
+      "engine_used": "Google Gemini",
+      "seconds": 1.14,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Toor Dal 1kg",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "n024",
+      "engine_used": "Google Gemini",
+      "seconds": 1.0,
+      "party": "Ramesh",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Tea Powder 500g",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "id": "n025",
+      "engine_used": "Google Gemini",
+      "seconds": 2.05,
+      "party": null,
+      "type": "expense",
+      "amount": 8000.0,
+      "category": "Rent",
+      "items": []
+    },
+    {
+      "id": "n026",
+      "engine_used": "Google Gemini",
+      "seconds": 3.33,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Soap Bar",
+          "quantity": 6
+        }
+      ]
+    },
+    {
+      "id": "n027",
+      "engine_used": "Google Gemini",
+      "seconds": 3.28,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n028",
+      "engine_used": "Google Gemini",
+      "seconds": 18.31,
+      "party": "Kumar Traders",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Salt 1kg",
+          "quantity": 10
+        }
+      ]
+    },
+    {
+      "id": "n029",
+      "engine_used": "Google Gemini",
+      "seconds": 13.22,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Biscuit Pack",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "id": "n030",
+      "engine_used": "Google Gemini",
+      "seconds": 14.17,
+      "party": null,
+      "type": "expense",
+      "amount": 2400.0,
+      "category": "Utilities",
+      "items": []
+    },
+    {
+      "id": "n031",
+      "engine_used": "Google Gemini",
+      "seconds": 16.81,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n032",
+      "engine_used": "Google Gemini",
+      "seconds": 13.98,
+      "party": "Kumar Traders",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Sugar Packet 1kg",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "id": "n033",
+      "engine_used": "Google Gemini",
+      "seconds": 13.88,
+      "party": "ABC Suppliers",
+      "type": "purchase",
+      "items": [
+        {
+          "product": "Cooking Oil 1L",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "id": "n034",
+      "engine_used": "Google Gemini",
+      "seconds": 13.94,
+      "party": "Ramesh",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Tea Powder 500g",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "n035",
+      "engine_used": "Google Gemini",
+      "seconds": 18.5,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Salt 1kg",
+          "quantity": 10
+        }
+      ]
+    },
+    {
+      "id": "n036",
+      "engine_used": "Google Gemini",
+      "seconds": 18.45,
+      "party": null,
+      "type": "expense",
+      "amount": 8000.0,
+      "category": "Rent",
+      "items": []
+    },
+    {
+      "id": "n037",
+      "engine_used": "Google Gemini",
+      "seconds": 15.67,
+      "party": "Kumar Traders",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Soap Bar",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "id": "n038",
+      "engine_used": "Google Gemini",
+      "seconds": 15.72,
+      "party": "Sunrise Wholesale",
+      "type": "purchase",
+      "items": [
+        {
+          "product": "Wheat Flour 10kg",
+          "quantity": 6
+        }
+      ]
+    },
+    {
+      "id": "n039",
+      "engine_used": "Google Gemini",
+      "seconds": 5.8,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Toor Dal 1kg",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "n040",
+      "engine_used": "Google Gemini",
+      "seconds": 15.44,
+      "party": "Ramesh",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Coffee Powder 200g",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "id": "n041",
+      "engine_used": "Google Gemini",
+      "seconds": 16.08,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n042",
+      "engine_used": "Google Gemini",
+      "seconds": 16.31,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Sugar Packet 1kg",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "id": "n043",
+      "engine_used": "Google Gemini",
+      "seconds": 12.06,
+      "party": "Ramesh",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Tea Powder 500g",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "n044",
+      "engine_used": "Google Gemini",
+      "seconds": 10.14,
+      "party": null,
+      "type": "expense",
+      "amount": 8000.0,
+      "category": "Rent",
+      "items": []
+    },
+    {
+      "id": "n045",
+      "engine_used": "Google Gemini",
+      "seconds": 11.05,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Salt 1kg",
+          "quantity": 10
+        }
+      ]
+    },
+    {
+      "id": "n046",
+      "engine_used": "Google Gemini",
+      "seconds": 10.83,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Soap Bar",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "id": "n047",
+      "engine_used": "Google Gemini",
+      "seconds": 12.77,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Toor Dal 1kg",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "n048",
+      "engine_used": "Google Gemini",
+      "seconds": 9.38,
+      "party": null,
+      "type": "expense",
+      "amount": 2400.0,
+      "category": "Utilities",
+      "items": []
+    },
+    {
+      "id": "n049",
+      "engine_used": "Google Gemini",
+      "seconds": 12.66,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Biscuit Pack",
+          "quantity": 6
+        }
+      ]
+    },
+    {
+      "id": "n050",
+      "engine_used": "Google Gemini",
+      "seconds": 15.72,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Coffee Powder 200g",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "id": "n051",
+      "engine_used": "Google Gemini",
+      "seconds": 1.11,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n052",
+      "engine_used": "Google Gemini",
+      "seconds": 14.0,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n053",
+      "engine_used": "Google Gemini",
+      "seconds": 1.06,
+      "party": "Ramesh",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Toor Dal 1kg",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "n054",
+      "engine_used": "Google Gemini",
+      "seconds": 15.94,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n055",
+      "engine_used": "Google Gemini",
+      "seconds": 19.41,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Sugar Packet 1kg",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "id": "n056",
+      "engine_used": "Google Gemini",
+      "seconds": 0.98,
+      "party": "Kumar Traders",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Soap Bar",
+          "quantity": 4
+        }
+      ]
+    },
+    {
+      "id": "n057",
+      "engine_used": "Google Gemini",
+      "seconds": 17.34,
+      "party": "ABC Suppliers",
+      "type": "purchase",
+      "items": [
+        {
+          "product": "Cooking Oil 1L",
+          "quantity": 10
+        }
+      ]
+    },
+    {
+      "id": "n058",
+      "engine_used": "Google Gemini",
+      "seconds": 18.22,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n059",
+      "engine_used": "Google Gemini",
+      "seconds": 16.81,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Tea Powder 500g",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "n060",
+      "engine_used": "Google Gemini",
+      "seconds": 1.02,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n061",
+      "engine_used": "Google Gemini",
+      "seconds": 10.12,
+      "party": "Anita Stores",
+      "type": "sale",
+      "amount": 1350.0,
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 10
+        }
+      ]
+    },
+    {
+      "id": "n062",
+      "engine_used": "Google Gemini",
+      "seconds": 3.17,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n063",
+      "engine_used": "Google Gemini",
+      "seconds": 0.98,
+      "party": "Ramesh",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Tea Powder 500g",
+          "quantity": 2
+        }
+      ]
+    },
+    {
+      "id": "n064",
+      "engine_used": "Google Gemini",
+      "seconds": 0.92,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n065",
+      "engine_used": "Google Gemini",
+      "seconds": 0.95,
+      "party": null,
+      "type": "expense",
+      "amount": 12000.0,
+      "category": "Salary",
+      "items": []
+    },
+    {
+      "id": "n066",
+      "engine_used": "Google Gemini",
+      "seconds": 1.05,
+      "party": null,
+      "type": "expense",
+      "amount": 800.0,
+      "category": "Fuel",
+      "items": []
+    },
+    {
+      "id": "n067",
+      "engine_used": "Google Gemini",
+      "seconds": 0.94,
+      "party": "Anita Stores",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n068",
+      "engine_used": "Google Gemini",
+      "seconds": 1.02,
+      "party": "Ram and Sons",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Rice Bag 25kg",
+          "quantity": 5
+        }
+      ]
+    },
+    {
+      "id": "n069",
+      "engine_used": "Google Gemini",
+      "seconds": 0.97,
+      "party": "Ram and Sons",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Soap Bar",
+          "quantity": 3
+        }
+      ]
+    },
+    {
+      "id": "n070",
+      "engine_used": "Google Gemini",
+      "seconds": 1.12,
+      "party": "Ramesh",
+      "type": "sale",
+      "items": [
+        {
+          "product": "Biscuit Pack",
+          "quantity": 6
+        }
+      ]
+    }
+  ]
+}

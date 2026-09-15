@@ -1,0 +1,30 @@
+// REAL DATA. Twelve photographs of handwritten order slips, taken on a phone.
+//
+// The labels are a transcription of what is on the paper, made by reading the
+// images. They have been checked once, by one person - which is exactly the
+// weakness to declare in a write-up. Two independent transcriptions, with the
+// agreement between them reported, is what this needs before it is evidence.
+//
+// Three slips (s01, s05, s10) have an item corrected in place. The label says
+// what the customer ordered, so a struck-out line is ABSENT from the gold:
+// s01 drops "Product B", s05 counts Coffee once and not twice, s10 reads the
+// product as "Atta" rather than "Wheat Atta". This is the whole point of the
+// set - a character recogniser cannot see a strikethrough, so it will read all
+// three as live text, and the gold labels are what make that visible as a
+// number rather than an anecdote.
+//
+// Products here are the text as written, not catalogue rows: these slips come
+// from six different trades and no single shop stocks all of it. So this set
+// measures extraction, and notes.jsonl measures extraction plus resolution.
+{"id":"s01","image":"1.jpg","note":"Product B struck out","gold":{"party":"A. Sharma","phone":"6969696969","items":[{"product":"Product A","quantity":3},{"product":"Cement bag","quantity":23}]}}
+{"id":"s02","image":"2.jpg","gold":{"party":"Karthik","phone":"7894561230","items":[{"product":"Chair","quantity":4},{"product":"table (Small)","quantity":1},{"product":"Screws packet","quantity":8}]}}
+{"id":"s03","image":"3.jpg","gold":{"party":"Latha","phone":"9880011223","items":[{"product":"Dal","quantity":5},{"product":"Rice","quantity":10},{"product":"Salt","quantity":2}]}}
+{"id":"s04","image":"4.jpg","gold":{"party":"Rakesh","phone":"9876543210","items":[{"product":"Tiles","quantity":2},{"product":"Paint (Blue)","quantity":1},{"product":"Nails","quantity":5}]}}
+{"id":"s05","image":"5.jpg","note":"first 1 kg Coffee struck out and rewritten","gold":{"party":"Meena","phone":"9001122334","items":[{"product":"Sugar","quantity":3},{"product":"Tea Powder","quantity":2},{"product":"Coffee","quantity":1}]}}
+{"id":"s06","image":"6.jpg","gold":{"party":"Imran","phone":"7012345678","items":[{"product":"Cement","quantity":3},{"product":"Sand","quantity":4},{"product":"Angle Grinder","quantity":1}]}}
+{"id":"s07","image":"7.jpg","gold":{"party":"Priya M.","phone":"9123456780","items":[{"product":"Wash Basin","quantity":1},{"product":"Taps","quantity":2},{"product":"PVC pipe","quantity":6}]}}
+{"id":"s08","image":"8.jpg","gold":{"party":"V. Rao","phone":"9443311220","items":[{"product":"LED Bulb","quantity":12},{"product":"Switch Board","quantity":4},{"product":"Wire (Red)","quantity":2}]}}
+{"id":"s09","image":"9.jpg","gold":{"party":"Neha","phone":"8056789123","items":[{"product":"Curtains","quantity":2},{"product":"rod (6 ft)","quantity":1},{"product":"brackets","quantity":4}]}}
+{"id":"s10","image":"10.jpg","note":"Wheat struck out, corrected to Atta","gold":{"party":"S. Khan","phone":"9988776655","items":[{"product":"Rice","quantity":10},{"product":"Atta","quantity":5},{"product":"Cooking Oil","quantity":2}]}}
+{"id":"s11","image":"11.jpg","gold":{"party":"Sunil","phone":"9036567890","items":[{"product":"Grinder","quantity":1},{"product":"Mixer","quantity":1},{"product":"Spare Jar","quantity":1}]}}
+{"id":"s12","image":"12.jpg","gold":{"party":"Dinesh","phone":"9988007766","items":[{"product":"Bricks","quantity":20},{"product":"Cement","quantity":3},{"product":"White Cement","quantity":1}]}}

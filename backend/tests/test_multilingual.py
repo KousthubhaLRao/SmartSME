@@ -98,7 +98,10 @@ def test_a_purchase_is_recognised_in_every_language(note):
         ("किराया 5000 खर्च", "Rent"),
         ("ಬಾಡಿಗೆ ೫೦೦೦ ಖರ್ಚು", "Rent"),
         ("ಸಂಬಳ ೧೫೦೦೦ ಖರ್ಚು", "Salary"),
-        ("bijli ka kharch 2000", "Electricity"),
+        # "Utilities", not "Electricity": the category vocabulary is pinned to a
+        # fixed list so the same cost cannot land under two headings depending
+        # on which engine read the note (app/ai/categories.py).
+        ("bijli ka kharch 2000", "Utilities"),
     ],
 )
 def test_expenses_and_their_categories(note, category):

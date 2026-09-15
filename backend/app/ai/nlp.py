@@ -10,6 +10,7 @@ import re
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 
+from .categories import PROMPT_LIST, canonical_category
 from .client import extract_json, get_provider
 from .lang import DEVANAGARI, KANNADA, normalize
 
@@ -53,7 +54,7 @@ def _prompt(text: str, today_iso: str) -> str:
 - product: the product name (singular, no unit words like "bags"/"packets"), or null.
 - quantity: numeric quantity, or null.
 - amount: total money value in rupees if stated, else null.
-- category: expense category (e.g. Rent, Utilities) for EXPENSE_ADDED, else null.
+- category: for EXPENSE_ADDED, exactly one of: {PROMPT_LIST}. Choose the closest; do not invent another word and do not answer in any language but English. null for everything else.
 - allInventory: true if the note refers to the ENTIRE inventory / all stock / everything in stock (e.g. "sell the entire inventory", "clear out all stock", "sell everything"); otherwise false. When true, leave product and quantity as null.
 - discountType: "percentage" if a percentage discount is mentioned (e.g. "10% off", "discount of 10%"), "amount" if a flat money discount is mentioned (e.g. "discount of 300 rupees"), otherwise "none".
 - discountValue: the numeric discount, the percent number for "percentage" or the rupee figure for "amount"; 0 when discountType is "none".
@@ -109,7 +110,10 @@ def _normalize(p: dict) -> ParsedCommand:
         product=p.get("product") or None,
         quantity=_num(p.get("quantity")),
         amount=_num(p.get("amount")),
-        category=p.get("category") or None,
+        # Pinned to the fixed list, whatever the model answered: an
+        # expense report is only useful if the same cost lands under the
+        # same heading every time.
+        category=canonical_category(p.get("category")) if p.get("category") else None,
         allInventory=bool(p.get("allInventory")),
         discountType=discount_type,
         discountValue=discount_value if discount_value > 0 else 0,
@@ -342,7 +346,7 @@ def heuristic_parse(text: str) -> ParsedCommand:
             text,
             re.IGNORECASE,
         )
-        category = _title_case(cat_match[1].strip()) if cat_match else "General"
+        category = canonical_category(cat_match[1]) if cat_match else "General"
         return ParsedCommand(
             eventType=event_type,
             party=None,

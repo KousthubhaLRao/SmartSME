@@ -311,3 +311,53 @@ def test_the_inbound_sweep_runs_on_its_own_thread():
 
     assert "_sweep_inbound" not in inspect.getsource(worker._run)
     assert "_sweep_inbound" in inspect.getsource(worker._run_inbound)
+
+
+# ---------------------------------------------------------------------------
+# 7. An absurd quantity from OCR reached a 32-bit column
+# ---------------------------------------------------------------------------
+def test_an_absurd_quantity_is_refused_with_a_readable_message(client, workspace):
+    """Orders now arrive by photograph, and OCR misreading a creased "23" as a
+    twenty-digit number is ordinary. Unbounded, that either fails the insert
+    with a 500 or - on a purchase, which has no stock check - succeeds and puts
+    a billion units into inventory."""
+    payload = {
+        "partyId": workspace["supplierId"],
+        "items": [
+            {
+                "productId": workspace["productId"],
+                "description": "Cooking Oil",
+                "quantity": 999_999_999_999,
+                "unitPrice": 100,
+            }
+        ],
+        "amountPaid": 0,
+    }
+    response = client.post("/api/purchases", json=payload)
+    assert response.status_code == 400, response.text
+    assert "looks wrong" in response.text
+
+    # And a price nobody could mean.
+    payload["items"][0]["quantity"] = 1
+    payload["items"][0]["unitPrice"] = 1e15
+    assert client.post("/api/purchases", json=payload).status_code == 400
+
+
+def test_an_ordinary_large_order_still_goes_through(client, workspace):
+    """The cap has to sit above anything a real shop would record."""
+    response = client.post(
+        "/api/purchases",
+        json={
+            "partyId": workspace["supplierId"],
+            "items": [
+                {
+                    "productId": workspace["productId"],
+                    "description": "Cooking Oil",
+                    "quantity": 5000,
+                    "unitPrice": 140,
+                }
+            ],
+            "amountPaid": 0,
+        },
+    )
+    assert response.status_code == 201, response.text

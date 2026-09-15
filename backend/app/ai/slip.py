@@ -112,12 +112,14 @@ UNITS = {
     "bundles",
 }
 
-#: The line that says who wrote the slip.
-_NAME = re.compile(r"^\s*name\s*[:;.\-]\s*(.+)$", re.IGNORECASE)
+#: The line that says who wrote the slip. The value is required: "Name:" with
+#: nothing after it used to produce a customer called "Name".
+_NAME = re.compile(r"^\s*name\s*[:;.\-]\s*(\S.*)$", re.IGNORECASE)
 
 #: Phone, however they abbreviate it.
 _PHONE = re.compile(
-    r"^\s*(?:ph|phone|mob|mobile|contact|cell)\s*(?:no\.?)?\s*[:;.\-]\s*(.+)$", re.IGNORECASE
+    r"^\s*(?:ph|phone|mob|mobile|contact|cell)\s*(?:no\.?)?\s*[:;.\-]\s*(\S.*)$",
+    re.IGNORECASE,
 )
 
 #: "Order:" - sometimes with the first item on the same line.
@@ -130,11 +132,51 @@ _ITEM = re.compile(r"^\s*(\d+(?:[.,]\d+)?)\s+(.*)$")
 _ONE = re.compile(r"^\s*[Il]\s+(?=\S)")
 
 
+#: A phone number that ended up on the name's line, because the engine lost
+#: the line break between them. A person's name does not end in ten digits.
+_TRAILING_NUMBER = re.compile(r"^(.*?)[\s:;,-]*(\d[\d \-]{8,})$")
+
+
+def _split_trailing_number(value: str) -> tuple[str, str | None]:
+    """Separate "Sunil 9036567890" into a name and a number."""
+    match = _TRAILING_NUMBER.match(value.strip())
+    if not match:
+        return value, None
+    name, digits = match[1].strip(" .,;:-"), _digits(match[2])
+    if len(digits) < 10 or not name:
+        return value, None
+    return name, digits
+
+
 def _lines(text: str) -> list[str]:
-    """One logical line per entry, tabs included - the engine uses them to
-    merge two short rows it decided were columns."""
-    flat = text.replace("\t", "\n")
-    return [line.strip() for line in flat.splitlines() if line.strip()]
+    """One logical line per entry.
+
+    A tab means the engine decided two things were columns, and it uses that
+    for two different situations:
+
+        4 bags Sand<TAB>I unit Angle Grinder     two items on one row
+        Ph no:<TAB>9443311220                    a label and its value
+
+    Splitting on every tab fixes the first and breaks the second - the phone
+    number becomes an orphan line and is never read, which cost two of twelve
+    real slips their phone number.
+
+    So a tab only ends a line when what follows it is genuinely another item:
+    a quantity *followed by words*. "9443311220" begins with a digit too, which
+    is why "starts with a number" is not a good enough test.
+    """
+    out: list[str] = []
+    for line in text.splitlines():
+        parts = line.split("\t")
+        current = parts[0]
+        for part in parts[1:]:
+            if (_ITEM.match(part) or _ONE.match(part)) and current.strip():
+                out.append(current)
+                current = part
+            else:
+                current = f"{current} {part}"
+        out.append(current)
+    return [line.strip() for line in out if line.strip()]
 
 
 def _digits(value: str) -> str:
@@ -167,6 +209,23 @@ def _split_item(line: str) -> ParsedInvoiceLine | None:
     return ParsedInvoiceLine(product=product, quantity=quantity)
 
 
+#: The words a slip uses to label a field. On their own they are not a customer.
+_LABELS = {"name", "ph", "phone", "no", "mob", "mobile", "contact", "cell", "order", "date"}
+
+
+def _looks_like_a_name(line: str) -> bool:
+    """Could this line be a person or shop, rather than a stray number?"""
+    stripped = line.strip(" .,;:-")
+    if not stripped or len(stripped) > 80:
+        return False
+    if all(word.lower() in _LABELS for word in stripped.split()):
+        # "Name:" with nothing after it is an empty field, not a customer
+        # called Name.
+        return False
+    # Needs at least one letter, and must not open with a quantity.
+    return any(ch.isalpha() for ch in stripped) and not _ITEM.match(stripped)
+
+
 def parse_slip(text: str) -> ParsedInvoice:
     """Read an order slip's text. Never raises: an unreadable slip becomes an
     empty invoice, which the Inbox shows as "could not read" rather than
@@ -178,7 +237,11 @@ def parse_slip(text: str) -> ParsedInvoice:
 
     for line in _lines(text):
         if (found := _NAME.match(line)) and party is None:
-            party = found[1].strip(" .,;:-") or None
+            party, trailing = _split_trailing_number(found[1].strip(" .,;:-"))
+            # A label with nothing after it is not a customer called "Name".
+            party = party or None
+            if trailing and phone is None:
+                phone = trailing
             continue
         if (found := _PHONE.match(line)) and phone is None:
             digits = _digits(found[1])
@@ -197,8 +260,10 @@ def parse_slip(text: str) -> ParsedInvoice:
         if item := _split_item(line):
             items.append(item)
             in_order = True
-        elif not in_order and party is None and line:
-            # An unlabelled first line is usually the customer's name.
+        elif not in_order and party is None and _looks_like_a_name(line):
+            # An unlabelled first line is usually the customer's name - but only
+            # if it reads like one. "0 kg rice" is a line item with a quantity
+            # the parser rejected, not somebody called "0 kg rice".
             party = line.strip(" .,;:-")
 
     return ParsedInvoice(party=party, phone=phone, docType="sale", lineItems=items)

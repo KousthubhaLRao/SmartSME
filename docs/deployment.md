@@ -23,14 +23,19 @@ Browser ──► Vercel (frontend/dist, static)
 
 ### 1. Database — Neon
 
-This repo is linked to a Neon project via the Neon CLI. [`neon.ts`](../neon.ts)
-declares the policy; `.neon` (git-ignored) records the link.
+Any managed PostgreSQL works; Neon is what was used here. The repo no longer
+carries a `neon.ts` - it was a leftover from the Next.js version and was removed
+along with the other stale Node tooling. Recreate it only if you want Neon's
+infrastructure-as-code:
 
 ```bash
 npm i -g neon@latest && neon login
+neon config init     # writes a fresh neon.ts
 neon link --project-id <your-project-id> --branch production -y
 neon deploy          # applies neon.ts to the branch
 ```
+
+Or skip all of it and copy the connection string out of the Neon dashboard.
 
 `neon link` and `neon deploy` write the live credentials into `.env.local`
 (git-ignored): `DATABASE_URL` (pooled), `DATABASE_URL_UNPOOLED` (direct),

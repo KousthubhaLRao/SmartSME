@@ -1,0 +1,33 @@
+{
+  "_comment": [
+    "The shop every example is scored against. Fixed on purpose: a number is",
+    "only comparable to another number if both were produced against the same",
+    "catalogue, so this does not read the development database.",
+    "",
+    "'Ramesh' and 'Ram and Sons' are both here deliberately. A matcher that",
+    "resolves 'Ram' to 'Ramesh' bills the wrong customer, and that bug shipped",
+    "once already - keeping both in the catalogue means the evaluation would",
+    "catch it coming back."
+  ],
+  "parties": [
+    { "id": "pa1", "name": "Anita Stores", "type": "customer", "phone": "+91 90000 22222" },
+    { "id": "pa2", "name": "Kumar Traders", "type": "customer", "phone": "+91 90000 11111" },
+    { "id": "pa3", "name": "Ramesh", "type": "customer", "phone": "+91 90000 33333" },
+    { "id": "pa4", "name": "Ram and Sons", "type": "customer", "phone": "+91 90000 44444" },
+    { "id": "pa5", "name": "Lathamma Provisions", "type": "customer", "phone": "9880011223" },
+    { "id": "pa6", "name": "ABC Suppliers", "type": "supplier", "phone": "+91 90000 55555" },
+    { "id": "pa7", "name": "Sunrise Wholesale", "type": "supplier", "phone": "+91 90000 66666" }
+  ],
+  "products": [
+    { "id": "pr1", "name": "Rice Bag 25kg", "sellingPrice": 1350, "purchasePrice": 1200, "stock": 40 },
+    { "id": "pr2", "name": "Sugar Packet 1kg", "sellingPrice": 52, "purchasePrice": 45, "stock": 120 },
+    { "id": "pr3", "name": "Cooking Oil 1L", "sellingPrice": 160, "purchasePrice": 140, "stock": 60 },
+    { "id": "pr4", "name": "Wheat Flour 10kg", "sellingPrice": 410, "purchasePrice": 360, "stock": 35 },
+    { "id": "pr5", "name": "Tea Powder 500g", "sellingPrice": 265, "purchasePrice": 230, "stock": 50 },
+    { "id": "pr6", "name": "Toor Dal 1kg", "sellingPrice": 145, "purchasePrice": 125, "stock": 80 },
+    { "id": "pr7", "name": "Salt 1kg", "sellingPrice": 22, "purchasePrice": 16, "stock": 200 },
+    { "id": "pr8", "name": "Coffee Powder 200g", "sellingPrice": 190, "purchasePrice": 165, "stock": 45 },
+    { "id": "pr9", "name": "Biscuit Pack", "sellingPrice": 30, "purchasePrice": 24, "stock": 300 },
+    { "id": "pr10", "name": "Soap Bar", "sellingPrice": 35, "purchasePrice": 28, "stock": 150 }
+  ]
+}
