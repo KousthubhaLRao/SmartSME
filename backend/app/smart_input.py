@@ -9,16 +9,22 @@ user confirms first, then `publish_draft` runs it through the domain layer.
 
 from __future__ import annotations
 
+import base64
 import re
+import unicodedata
 import uuid
 from typing import Any, TypeVar
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .ai.client import ai_status
+from .ai import ocr_space
+from .ai.client import ai_status, has_vision
+from .ai.lexicon import concepts_in
 from .ai.nlp import parse_command
-from .ai.ocr import ALLOWED_MEDIA, parse_invoice_image
+from .ai.ocr import ALLOWED_MEDIA, ParsedInvoice, parse_invoice_image
+from .ai.slip import parse_slip
+from .ai.translit import fold, skeleton, stem
 from .core.utils import parse_date_input, round2
 from .domain import purchases as purchases_domain
 from .domain import sales as sales_domain
@@ -29,25 +35,39 @@ from .schemas import ExpenseInput, LineInput, PurchaseInput, SaleInput
 T = TypeVar("T", Party, Product)
 
 
-def _norm(s: str) -> str:
-    r"""Lowercase, drop punctuation, collapse whitespace, so "Anita Stores." and
-    "ANITA  STORES" compare equal.
+def _keep(ch: str) -> bool:
+    r"""Letters, digits, spaces - and combining marks.
 
-    `\w` rather than `a-z0-9`: an ASCII-only class deletes Devanagari and
-    Kannada entirely, so every native-script name normalised to the empty string
-    and matched nothing.
+    The marks are the subtle part. In Devanagari and Kannada the vowels of a
+    word are written as marks attached to the consonants, and they are Unicode
+    category M, which is *not* alphanumeric and so not matched by `\w`. A
+    "[^\w\s]" filter therefore deleted them one by one: अनीता came out as
+    "अन त", ಅನಿತಾ as "ಅನ ತ".
+
+    That is worse than it sounds, because the damage was symmetrical. Both
+    sides of a comparison were mangled the same way, so a name still matched
+    itself and a test comparing Kannada to Kannada passed - while nothing could
+    ever match across scripts, because the letters transliteration needs had
+    already been thrown away before it ever ran.
     """
-    return re.sub(r"\s+", " ", re.sub(r"[^\w\s]", " ", (s or "").lower())).strip()
+    return ch.isalnum() or ch.isspace() or unicodedata.category(ch)[0] == "M"
 
 
-def _stem(token: str) -> str:
-    """Crude, deliberately: a catalogue says "Biscuits" and a note says
-    "biscuit", and that is the only difference worth papering over here."""
-    return token[:-1] if len(token) > 3 and token.endswith("s") else token
+def _norm(s: str) -> str:
+    """Lowercase, drop punctuation, collapse whitespace, so "Anita Stores." and
+    "ANITA  STORES" compare equal - in every script."""
+    cleaned = "".join(ch if _keep(ch) else " " for ch in (s or "").lower())
+    return re.sub(r"\s+", " ", cleaned).strip()
 
 
 def _tokens(s: str | None) -> list[str]:
-    return [_stem(t) for t in _norm(s).split(" ") if t]
+    """A name as comparable words, whatever alphabet it arrived in.
+
+    `fold` is what makes this cross-script: it transliterates Devanagari and
+    Kannada into Latin and then throws away everything writers disagree about,
+    so "Anita", "अनीता" and "ಅನಿತಾ" all arrive here as the same token.
+    """
+    return [stem(fold(t)) for t in _norm(s).split(" ") if fold(t)]
 
 
 def _run_of(haystack: list[str], needle: list[str]) -> bool:
@@ -62,9 +82,29 @@ def _run_of(haystack: list[str], needle: list[str]) -> bool:
     )
 
 
+def _only(matches: list[T]) -> T | None:
+    """The single match, or nothing.
+
+    Used for the guessing tiers. When a rule is loose enough to hit two
+    catalogue entries it is too loose to pick between them, and picking the
+    first is how a sale ends up billed to the wrong customer - so it declines
+    and leaves the dropdown on the confirm screen to whoever is reading it.
+    """
+    return matches[0] if len(matches) == 1 else None
+
+
 def best_match(items: list[T], query: str | None) -> T | None:
-    """Exact (normalised), then whole-word containment either way, then
-    token-subset, so "Anita" resolves "Anita Stores".
+    """Find the catalogue row a phrase is talking about, in any of three
+    scripts, in five passes from certain to merely likely.
+
+    1. the same name, exactly
+    2. the same words, allowing for script and spelling ("अनीता" / "Anita")
+    3. the same thing, by meaning ("चावल" / "chawal" / "ಅಕ್ಕಿ" -> rice ->
+       "Rice Bag 25kg") - `lexicon.py` supplies the vocabulary
+    4. the same words in a different order
+    5. the same consonants, and only when exactly one row has them - the last
+       resort for what transliteration cannot recover, like स्टोर्स ("storsa")
+       against a catalogue that says "Stores"
 
     Every comparison is on whole words. Plain substring matching looks the same
     on the examples that motivate it and is quietly wrong in between: "Ram"
@@ -78,16 +118,29 @@ def best_match(items: list[T], query: str | None) -> T | None:
     if not needle:
         return None
 
+    # 1. The same name.
     for item in items:
         if _norm(item.name) == needle:
             return item
 
+    # 2. The same words, once script and spelling are folded away.
     needle_tokens = _tokens(needle)
     for item in items:
         item_tokens = _tokens(item.name)
         if _run_of(item_tokens, needle_tokens) or _run_of(needle_tokens, item_tokens):
             return item
 
+    # 3. The same goods by meaning. Only products are named by what they are; a
+    #    person called Anita is not an instance of anything.
+    wanted = concepts_in(query)
+    if wanted:
+        by_concept = [item for item in items if wanted & concepts_in(item.name)]
+        if by_concept:
+            # Several rice products is normal; the first is as good a guess as
+            # any, and the confirm screen shows which one was chosen.
+            return by_concept[0]
+
+    # 4. The same words, in any order.
     for item in items:
         item_tokens = _tokens(item.name)
         if not item_tokens:
@@ -99,7 +152,42 @@ def best_match(items: list[T], query: str | None) -> T | None:
         )
         if short and all(t in long_set for t in short):
             return item
+
+    # 5. The same consonants - lossy, so only when nothing else could be meant.
+    needle_bones = [skeleton(t) for t in needle_tokens if len(skeleton(t)) > 1]
+    if needle_bones:
+        candidates = []
+        for item in items:
+            bones = [skeleton(t) for t in _tokens(item.name) if len(skeleton(t)) > 1]
+            if _run_of(bones, needle_bones) or _run_of(needle_bones, bones):
+                candidates.append(item)
+        return _only(candidates)
     return None
+
+
+def phone_key(value: str | None) -> str:
+    """The comparable part of a phone number.
+
+    Everything people vary is discarded - spaces, dashes, brackets, a +91, a
+    leading 0 - and the last ten digits are kept, because that is the part that
+    identifies an Indian subscriber however it was written down.
+    """
+    digits = re.sub(r"\D", "", value or "")
+    return digits[-10:] if len(digits) >= 10 else digits
+
+
+def party_by_phone(parties: list[Party], phone: str | None) -> Party | None:
+    """The one party with this number, or None.
+
+    Tried before any name matching, because it is the only signal on an order
+    slip that is exact. If two parties somehow share a number there is nothing
+    to choose between them, so it declines rather than guesses.
+    """
+    key = phone_key(phone)
+    if len(key) < 10:
+        return None
+    hits = [p for p in parties if phone_key(getattr(p, "phone", None)) == key]
+    return hits[0] if len(hits) == 1 else None
 
 
 def _empty_draft() -> dict[str, Any]:
@@ -210,15 +298,58 @@ def draft_from_text(db: Session, business_id: uuid.UUID, text: str) -> dict[str,
     return draft
 
 
+def read_image(base64_data: str, media_type: str) -> tuple[ParsedInvoice, str]:
+    """Read an order slip with the best engine configured, and say which one.
+
+    Two engines, in order of what they can do rather than what they cost,
+    because both free tiers cost nothing:
+
+    1. **A vision model.** Reads handwriting, and - the reason it is first -
+       can be told to ignore a line that was crossed out. Corrections in place
+       are ordinary on a handwritten slip, and every one of them is an item
+       that must not be recorded.
+    2. **OCR.space.** Free, and on real slips it reads the handwriting
+       accurately. What it cannot do is see a strikethrough: that information
+       is not in a stream of characters, so a cancelled line arrives looking
+       exactly like a live one.
+
+    Neither writes anything. The draft goes to the confirm screen, which is
+    where the second engine's blind spot is meant to be caught.
+    """
+    if has_vision():
+        return parse_invoice_image(base64_data, media_type), "vision"
+
+    if ocr_space.enabled():
+        try:
+            text = ocr_space.read_text(base64.b64decode(base64_data))
+        except ocr_space.OcrUnavailable as err:
+            # Its message names the cause - no key, a refused image, an
+            # unreachable host - and all of them are things the person holding
+            # the phone can act on, so it reaches them rather than becoming a
+            # bare 502.
+            raise ValueError(str(err)) from err
+        if not text.strip():
+            raise ValueError("No text could be read from that image.")
+        return parse_slip(text), "ocr.space"
+
+    raise ValueError(
+        "Reading an image needs either an AI key that can see images "
+        "(GOOGLE_API_KEY is free) or OCR_SPACE_API_KEY. Set one in backend/.env, "
+        "or type the order into Smart Input instead."
+    )
+
+
 def draft_from_image(
     db: Session, business_id: uuid.UUID, base64_data: str, media_type: str
 ) -> dict[str, Any]:
     if media_type not in ALLOWED_MEDIA:
         raise ValueError("Unsupported image. Use PNG, JPEG, WebP, or GIF.")
 
-    invoice = parse_invoice_image(base64_data, media_type)
+    invoice, engine = read_image(base64_data, media_type)
     parties, products = _load_tenant(db, business_id)
-    matched_party = best_match(parties, invoice.party)
+    # The phone number first: it is the only exact key on an order slip, and
+    # the names on one ("S. Khan", "Priya M.") are the hardest kind to match.
+    matched_party = party_by_phone(parties, invoice.phone) or best_match(parties, invoice.party)
     effective = _direction_from_party(matched_party, invoice.docType)
 
     items: list[dict[str, Any]] = []
@@ -241,11 +372,15 @@ def draft_from_image(
     if not items:
         items = [{"productId": None, "description": "Item", "quantity": 1, "unitPrice": 0}]
 
+    # The engine is named on the draft because it matters to whoever reviews it:
+    # OCR.space cannot see a crossed-out line, so those items deserve a closer
+    # read than the ones a vision model produced.
     status = ai_status()
+    label = (status or {}).get("label", "AI") if engine == "vision" else "OCR.space"
     draft = _empty_draft()
     draft.update(
         suggestedType=effective,
-        engine=(status or {}).get("label", "AI"),
+        engine=label,
         partyId=str(matched_party.id) if matched_party else None,
         partyName=matched_party.name if matched_party else invoice.party,
         items=items,

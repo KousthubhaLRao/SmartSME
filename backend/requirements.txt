@@ -11,6 +11,14 @@ httpx==0.28.1
 python-multipart==0.0.20
 reportlab==4.2.5
 
+# Reading orders written in Devanagari or Kannada. A character-mapping library,
+# not a model: pure Python, nothing downloaded at runtime, 0.2s to import.
+indic-transliteration==2.3.82
+
+# Preparing photographs for OCR: orientation, grayscale, contrast, and getting
+# a phone-camera image under the free tier's 1 MB upload limit.
+Pillow==12.3.0
+
 # Event dispatch: Redis broker + Celery workers (see EVENT_DISPATCH)
 celery==5.4.0
 redis==5.2.1

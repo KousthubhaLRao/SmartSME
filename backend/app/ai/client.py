@@ -4,8 +4,11 @@ Works with whichever API key is configured, with no code changes to switch:
 
   - Anthropic  (ANTHROPIC_API_KEY  + ANTHROPIC_MODEL)
   - OpenAI, or ANY OpenAI-compatible endpoint  (OPENAI_API_KEY + OPENAI_BASE_URL)
-  - Groq       (GROQ_API_KEY + GROQ_MODEL)
   - Google Gemini (GOOGLE_API_KEY + GEMINI_MODEL)
+
+Gemini is the one to reach for: its free tier needs no card, and the same key
+reads text notes and photographed order slips. With no key at all, text falls
+back to the built-in parser and images to OCR.space.
 
 If several keys are set, AI_PROVIDER picks one; otherwise the first configured
 provider in the order above wins. With no key at all, callers fall back to the
@@ -159,7 +162,7 @@ def _anthropic_complete(
 
 
 # ---------------------------------------------------------------------------
-# OpenAI / any OpenAI-compatible endpoint (incl. Groq)
+# OpenAI / any OpenAI-compatible endpoint
 # ---------------------------------------------------------------------------
 def _openai_complete(
     p: AiProvider, prompt: str, system: str | None, image: AiImage | None, max_tokens: int
@@ -255,18 +258,6 @@ def _build(provider_id: str) -> AiProvider | None:
             api_key=settings.openai_api_key,
             base_url=settings.openai_base_url,
         )
-    if provider_id == "groq" and settings.groq_api_key:
-        # Groq offers both text-only and vision models. Only a vision model can
-        # do OCR, so we report vision support based on the configured model.
-        model = settings.groq_model
-        return AiProvider(
-            id="groq",
-            label="Groq",
-            model=model,
-            vision=any(tag in model.lower() for tag in ("vision", "scout", "maverick", "llava")),
-            api_key=settings.groq_api_key,
-            base_url=settings.groq_base_url,
-        )
     if provider_id == "google" and settings.google_api_key:
         return AiProvider(
             id="google",
@@ -278,17 +269,28 @@ def _build(provider_id: str) -> AiProvider | None:
     return None
 
 
-ORDER = ("anthropic", "openai", "groq", "google")
+ORDER = ("anthropic", "openai", "google")
 
 
-def get_provider() -> AiProvider | None:
-    """The active provider, or None when no API key is configured."""
+def get_provider(*, vision: bool = False) -> AiProvider | None:
+    """The provider to use, or None when nothing configured can do the job.
+
+    `vision=True` asks for one that can read an image, and that is not a detail
+    the caller can ignore: providers come and go from this list, and a key that
+    used to serve a vision model may not any more. Picking the first configured
+    key regardless meant a text-only account could shadow a perfectly good
+    vision-capable one, and photographed orders failed with "no vision
+    provider" while a vision provider sat right there in the same .env.
+
+    AI_PROVIDER still forces the choice - including into a provider that cannot
+    see, which is the operator's business to get right.
+    """
     forced = (settings.ai_provider or "").lower().strip()
     if forced in ORDER:
         return _build(forced)
     for pid in ORDER:
         p = _build(pid)
-        if p:
+        if p and (p.vision or not vision):
             return p
     return None
 
@@ -298,8 +300,7 @@ def has_ai() -> bool:
 
 
 def has_vision() -> bool:
-    p = get_provider()
-    return p is not None and p.vision
+    return get_provider(vision=True) is not None
 
 
 def ai_status() -> dict | None:

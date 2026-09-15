@@ -11,10 +11,10 @@ binds the chat; every later message from it is routed to that business. Any
 message from an unlinked chat gets a short reply explaining how to link, and is
 otherwise ignored.
 
-**Long polling**, not webhooks: `getUpdates` works from a laptop behind NAT with
-nothing to expose. The offset is stored in the database so a restart does not
-re-read the backlog, and Telegram itself acknowledges by offset, so the same
-update is never processed twice.
+**Long polling**, not webhooks: `getUpdates` works from a laptop behind NAT
+with nothing to expose. The offset lives in memory, so a restart re-reads
+whatever Telegram still holds; that is harmless, because ingestion deduplicates
+on the message id and a re-read message is recognised rather than queued twice.
 """
 
 from __future__ import annotations

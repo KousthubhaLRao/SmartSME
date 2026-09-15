@@ -56,6 +56,10 @@ class Settings(BaseSettings):
     # ---- Inbound orders -----------------------------------------------------
     #: Collect orders from a mailbox. Off by default: an inbox that nobody has
     #: configured should not be polled every minute.
+    #: The domain inbound order addresses are shown as: orders+<token>@here.
+    #: Only ever displayed - routing is by the token, not the domain - so the
+    #: default is fine until there is a real mailbox to point at.
+    inbox_domain: str = "smartsme.local"
     email_ingest_enabled: bool = False
     #: "pop3" suits Mailpit (the local dev inbox); "imap" suits a real mailbox.
     email_protocol: Literal["pop3", "imap"] = "pop3"
@@ -70,6 +74,14 @@ class Settings(BaseSettings):
 
     #: A bot token from Telegram's @BotFather. Free, instant, no card.
     telegram_bot_token: str = ""
+
+    # ---- OCR.space: hosted OCR on a free tier ----
+    #: A free key (https://ocr.space/ocrapi) needs no card and allows 25,000
+    #: pages a month. It is a printed-text engine - see app/ai/ocr_space.py for
+    #: what that means for handwritten slips.
+    ocr_space_api_key: str = ""
+    #: Engine 2 is the newer model and better on short, unstructured lines.
+    ocr_space_engine: int = 2
 
     #: Seconds between inbound sweeps.
     inbound_poll_seconds: float = 30.0
@@ -110,12 +122,13 @@ class Settings(BaseSettings):
     openai_base_url: str = "https://api.openai.com/v1"
     openai_model: str = "gpt-4o-mini"
 
-    groq_api_key: str = ""
-    groq_base_url: str = "https://api.groq.com/openai/v1"
-    groq_model: str = "meta-llama/llama-4-scout-17b-16e-instruct"
+    #: Pinned model names go stale and then fail outright with a 404 - the
+    #: previous defaults here both did. Where a provider publishes a moving
+    #: alias, prefer it: drifting quietly beats breaking loudly for a
+    #: project nobody is watching day to day.
 
     google_api_key: str = ""
-    gemini_model: str = "gemini-2.0-flash"
+    gemini_model: str = "gemini-3.5-flash-lite"
 
     @property
     def cors_origin_list(self) -> list[str]:

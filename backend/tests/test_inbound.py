@@ -100,7 +100,10 @@ def test_the_subject_is_read_as_well_as_the_body(client, workspace, inbox_token)
         assert row.draft["items"][0]["quantity"] == 7
 
 
-def test_a_kannada_order_arrives_intact(client, workspace, inbox_token):
+def test_a_kannada_order_reaches_the_right_customer(client, workspace, inbox_token):
+    """A Kannada order should not merely survive the trip - it should land on
+    the customer it names. The workspace customer is "Anita Stores"; the mail
+    says ಅನಿತಾ, which is the same name in another alphabet."""
     with SessionLocal() as db:
         row = _deliver(
             db,
@@ -111,9 +114,25 @@ def test_a_kannada_order_arrives_intact(client, workspace, inbox_token):
             ),
         )
         assert row.status == "pending"
-        # The Kannada name survived the mail encoding and the parser.
-        assert row.draft["partyName"] and "ಅನಿತಾ" in row.draft["partyName"]
+        assert row.draft["partyId"] == workspace["customerId"], row.draft["partyName"]
+        assert row.draft["partyName"] == "Anita Stores"
         assert row.draft["items"][0]["quantity"] == 6
+
+
+def test_an_unknown_kannada_name_is_kept_as_written(client, workspace, inbox_token):
+    """Nothing to resolve to, so the name is passed through for the person
+    reviewing rather than guessed at or dropped."""
+    with SessionLocal() as db:
+        row = _deliver(
+            db,
+            _raw_email(
+                f"orders+{inbox_token}@smartsme.local",
+                "ಆರ್ಡರ್",
+                "ರಾಜುಗೆ ೬ ಕಿಲೋ ಅಕ್ಕಿ ಬೇಕು",
+            ),
+        )
+        assert row.draft["partyId"] is None
+        assert row.draft["partyName"] and "ರಾಜು" in row.draft["partyName"]
 
 
 def test_html_only_mail_is_reduced_to_its_text(client, workspace, inbox_token):
@@ -398,3 +417,22 @@ def test_the_queue_is_scoped_to_one_business(client, workspace, inbox_token, oth
 
 def test_an_unknown_status_filter_is_rejected(client):
     assert client.get("/api/inbox", params={"status": "maybe"}).status_code == 400
+
+
+def test_the_inbox_page_is_told_the_whole_address(client):
+    """The page used to build the address itself, with the domain hard-coded in
+    the frontend. The server owns that setting, so the server composes it."""
+    from app.core.config import settings
+
+    body = client.get("/api/inbox").json()
+    assert body["inboxAddress"] == f"orders+{body['inboxToken']}@{settings.inbox_domain}"
+
+
+def test_the_cli_prints_where_orders_arrive(capsys):
+    """`python -m app.cli inbox-token` exists so nobody has to hunt for the
+    token in the UI before they can send a test order."""
+    from app.cli import main
+
+    assert main(["inbox-token"]) == 0
+    printed = capsys.readouterr().out
+    assert "token" in printed and "orders+" in printed and "/link " in printed

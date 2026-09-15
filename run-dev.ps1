@@ -65,6 +65,20 @@ $frontend = Join-Path $root "frontend"
 $venvPython = Join-Path $backend ".venv\Scripts\python.exe"
 
 function Step($message) { Write-Host "==> $message" -ForegroundColor Cyan }
+function Invoke-Native([string]$FailureMessage, [scriptblock]$Command) {
+    # Run an external program and judge it by its exit code, which is the only
+    # thing that actually says whether it worked.
+    #
+    # PowerShell otherwise turns anything a native program writes to stderr into
+    # an error record as soon as the output is redirected - to a log file, a CI
+    # runner, any pipe - and with $ErrorActionPreference = "Stop" that aborts
+    # the script over alembic's ordinary "INFO [alembic.runtime.migration]"
+    # lines, from a command that succeeded and returned 0.
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try { & $Command } finally { $ErrorActionPreference = $previous }
+    if ($LASTEXITCODE -ne 0) { Die $FailureMessage }
+}
 function Warn($message) { Write-Host "    $message" -ForegroundColor Yellow }
 function Die($message) {
     Write-Host "    $message" -ForegroundColor Red
@@ -82,7 +96,9 @@ if ($Setup) {
 
     Step "Installing backend dependencies (a few minutes)"
     & $venvPython -m pip install --quiet --upgrade pip
-    & $venvPython -m pip install --quiet -r (Join-Path $backend "requirements.txt")
+    Invoke-Native "Could not install backend dependencies." {
+        & $venvPython -m pip install --quiet -r (Join-Path $backend "requirements.txt")
+    }
 
     Step "Installing frontend dependencies"
     Push-Location $frontend
@@ -130,17 +146,15 @@ foreach ($p in 8000, 5173) {
 # --- Containers --------------------------------------------------------------
 if (-not $SkipDocker) {
     Step "Starting PostgreSQL, Redis and Mailpit"
+    # The exit code is checked rather than assumed: without it, Docker Desktop
+    # being closed showed up thirty seconds later as "PostgreSQL did not become
+    # ready", which sends you to the wrong place entirely.
     try {
-        docker compose up -d | Out-Null
-    } catch {
+        Invoke-Native "Could not start the containers. Is Docker Desktop running?" {
+            docker compose up -d | Out-Null
+        }
+    } catch [System.Management.Automation.CommandNotFoundException] {
         Die "Docker is not installed, or not on PATH. Install Docker Desktop."
-    }
-    # PowerShell does not throw when a native command fails, so the exit code has
-    # to be read: without this, Docker Desktop being closed showed up thirty
-    # seconds later as "PostgreSQL did not become ready", which sends you to the
-    # wrong place entirely.
-    if ($LASTEXITCODE -ne 0) {
-        Die "Could not start the containers. Is Docker Desktop running?"
     }
 
     # Postgres accepts TCP before it is ready to answer queries, so wait for the
@@ -155,14 +169,32 @@ if (-not $SkipDocker) {
     if (-not $ready) { Die "PostgreSQL did not become ready. Check: docker compose logs db" }
 }
 
+# --- Dependencies ------------------------------------------------------------
+# Same reasoning as the migrations below: a pull that adds a package should not
+# turn into an ImportError in a window that flashes shut. The hash of
+# requirements.txt is stamped after each install, so this costs nothing on the
+# runs where nothing changed - which is nearly all of them.
+$reqFile = Join-Path $backend "requirements.txt"
+$stampFile = Join-Path $backend ".venv\.requirements-stamp"
+$reqHash = (Get-FileHash $reqFile -Algorithm SHA256).Hash
+$stamped = if (Test-Path $stampFile) { (Get-Content $stampFile -Raw).Trim() } else { "" }
+if ($reqHash -ne $stamped) {
+    Step "Installing new backend dependencies"
+    Invoke-Native "Could not install backend dependencies." {
+        & $venvPython -m pip install --quiet -r $reqFile
+    }
+    Set-Content -Path $stampFile -Value $reqHash -Encoding ascii
+}
+
 # --- Schema ------------------------------------------------------------------
 # Running this every time is what stops "it works on my machine" after a pull
 # that brought a new migration.
 Step "Applying database migrations"
 Push-Location $backend
 try {
-    & $venvPython -m alembic upgrade head
-    if ($LASTEXITCODE -ne 0) { Die "Migrations failed. The API would not start cleanly." }
+    Invoke-Native "Migrations failed. The API would not start cleanly." {
+        & $venvPython -m alembic upgrade head
+    }
 } finally {
     Pop-Location
 }

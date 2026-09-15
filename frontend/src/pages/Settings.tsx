@@ -160,9 +160,10 @@ export function Settings() {
             <div className="flex items-start gap-2 rounded-lg bg-warning/10 px-3 py-2 text-warning">
               <Icon name="alert" size={16} className="mt-0.5 shrink-0" />
               <span>
-                No AI provider configured. Text input falls back to the built-in regex parser and
-                image OCR is disabled. Set an API key in the backend environment (ANTHROPIC_API_KEY,
-                OPENAI_API_KEY, GROQ_API_KEY or GOOGLE_API_KEY) and restart the API.
+                No AI provider configured. Text input falls back to the built-in regex parser.
+                Photographed orders need either GOOGLE_API_KEY (free, and the only option that
+                reads a crossed-out line) or OCR_SPACE_API_KEY (free). Set one in the backend
+                environment and restart the API.
               </span>
             </div>
           )}

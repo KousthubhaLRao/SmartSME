@@ -15,6 +15,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import delete, func, select
 
+from ..core.config import settings
 from ..core.deps import CurrentUser, Db, require
 from ..core.roles import P
 from ..inbound.collector import collect
@@ -75,6 +76,7 @@ def list_inbox(
         "counts": {s: counts.get(s, 0) for s in STATUS_LABELS},
         "pending": counts.get("pending", 0),
         "inboxToken": ctx.business.inbox_token,
+        "inboxAddress": f"orders+{ctx.business.inbox_token}@{settings.inbox_domain}",
         "links": [
             {
                 "id": str(link.id),

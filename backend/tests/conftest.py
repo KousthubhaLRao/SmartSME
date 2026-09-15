@@ -72,8 +72,18 @@ def _prepare_test_database() -> str | None:
     os.environ["AUTH_SECRET"] = "smartsme-test-secret-" + "0" * 32
     # Keep the suite hermetic: with no provider the Smart Input engine uses its
     # built-in parser and OCR reports itself as unavailable. No network calls.
+    #
+    # OCR_SPACE_API_KEY belongs in this list as much as the AI keys do. Left
+    # set, a developer with a real key in backend/.env had the suite quietly
+    # uploading fixture images to a third party and failing on whatever came
+    # back - tests that depend on someone else's server are not tests.
     os.environ["AI_PROVIDER"] = ""
-    for key in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GROQ_API_KEY", "GOOGLE_API_KEY"):
+    for key in (
+        "ANTHROPIC_API_KEY",
+        "OPENAI_API_KEY",
+        "GOOGLE_API_KEY",
+        "OCR_SPACE_API_KEY",
+    ):
         os.environ[key] = ""
     return os.environ["DATABASE_URL"]
 
@@ -324,6 +334,8 @@ GROUP_NAMES = {
     "tests/test_alerts.py": "Alert log",
     "tests/test_ai_mocked.py": "AI (mocked)",
     "tests/test_multilingual.py": "Languages",
+    "tests/test_translation.py": "Translation",
+    "tests/test_ocr_slips.py": "Order slips (OCR)",
 }
 
 OUTCOMES = ("passed", "failed", "error", "skipped", "xfailed", "xpassed")

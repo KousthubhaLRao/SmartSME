@@ -43,9 +43,13 @@ def fake_provider(monkeypatch):
     provider = AiProvider(
         id="anthropic", label="Test Model", model="test-1", vision=True, api_key="x"
     )
-    monkeypatch.setattr(ai_client, "get_provider", lambda: provider)
-    monkeypatch.setattr(nlp, "get_provider", lambda: provider)
-    monkeypatch.setattr(ocr, "get_provider", lambda: provider)
+    # **kwargs because callers ask for what they need - `get_provider(vision=True)`
+    # for an image - and a stub that cannot take the question is a stub that
+    # stops testing the real call.
+    stub = lambda **_: provider  # noqa: E731
+    monkeypatch.setattr(ai_client, "get_provider", stub)
+    monkeypatch.setattr(nlp, "get_provider", stub)
+    monkeypatch.setattr(ocr, "get_provider", stub)
     return {"calls": calls, "reply": reply, "provider": provider}
 
 
@@ -53,18 +57,18 @@ def fake_provider(monkeypatch):
 # Choosing a provider
 # ---------------------------------------------------------------------------
 def test_no_keys_means_no_provider(monkeypatch):
-    for key in ("anthropic_api_key", "openai_api_key", "groq_api_key", "google_api_key"):
+    for key in ("anthropic_api_key", "openai_api_key", "google_api_key"):
         monkeypatch.setattr(settings, key, "")
     monkeypatch.setattr(settings, "ai_provider", "")
     assert ai_client.get_provider() is None
 
 
 def test_the_first_configured_provider_wins(monkeypatch):
-    for key in ("anthropic_api_key", "openai_api_key", "groq_api_key", "google_api_key"):
+    for key in ("anthropic_api_key", "openai_api_key", "google_api_key"):
         monkeypatch.setattr(settings, key, "")
     monkeypatch.setattr(settings, "ai_provider", "")
-    monkeypatch.setattr(settings, "groq_api_key", "g")
-    assert ai_client.get_provider().id == "groq"
+    monkeypatch.setattr(settings, "google_api_key", "g")
+    assert ai_client.get_provider().id == "google"
 
     # Anthropic comes earlier in the order, so adding it takes precedence.
     monkeypatch.setattr(settings, "anthropic_api_key", "a")
@@ -73,9 +77,9 @@ def test_the_first_configured_provider_wins(monkeypatch):
 
 def test_ai_provider_setting_overrides_the_order(monkeypatch):
     monkeypatch.setattr(settings, "anthropic_api_key", "a")
-    monkeypatch.setattr(settings, "groq_api_key", "g")
-    monkeypatch.setattr(settings, "ai_provider", "groq")
-    assert ai_client.get_provider().id == "groq"
+    monkeypatch.setattr(settings, "google_api_key", "g")
+    monkeypatch.setattr(settings, "ai_provider", "google")
+    assert ai_client.get_provider().id == "google"
 
 
 def test_forcing_a_provider_with_no_key_yields_nothing(monkeypatch):

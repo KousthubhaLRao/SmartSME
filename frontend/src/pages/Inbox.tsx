@@ -51,6 +51,7 @@ interface InboxData {
   counts: Record<string, number>;
   pending: number;
   inboxToken: string;
+  inboxAddress: string;
   links: { id: string; channel: string; label: string | null; externalId: string }[];
 }
 
@@ -364,7 +365,9 @@ function SetupModal({
 }) {
   const { run, pending } = useMutation();
   const token = data?.inboxToken ?? "";
-  const address = `orders+${token}@smartsme.local`;
+  // The server composes the address, because it owns the domain setting; the
+  // fallback only matters for a cached response from an older build.
+  const address = data?.inboxAddress ?? `orders+${token}@smartsme.local`;
 
   return (
     <Modal
