@@ -77,13 +77,7 @@ def _prepare_test_database() -> str | None:
     # set, a developer with a real key in backend/.env had the suite quietly
     # uploading fixture images to a third party and failing on whatever came
     # back - tests that depend on someone else's server are not tests.
-    os.environ["AI_PROVIDER"] = ""
-    for key in (
-        "ANTHROPIC_API_KEY",
-        "OPENAI_API_KEY",
-        "GOOGLE_API_KEY",
-        "OCR_SPACE_API_KEY",
-    ):
+    for key in ("GOOGLE_API_KEY", "OCR_SPACE_API_KEY"):
         os.environ[key] = ""
     return os.environ["DATABASE_URL"]
 

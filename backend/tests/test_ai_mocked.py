@@ -40,9 +40,7 @@ def fake_provider(monkeypatch):
         return reply["text"]
 
     monkeypatch.setattr(AiProvider, "complete", complete)
-    provider = AiProvider(
-        id="anthropic", label="Test Model", model="test-1", vision=True, api_key="x"
-    )
+    provider = AiProvider(id="google", label="Test Model", model="test-1", vision=True, api_key="x")
     # **kwargs because callers ask for what they need - `get_provider(vision=True)`
     # for an image - and a stub that cannot take the question is a stub that
     # stops testing the real call.
@@ -56,38 +54,23 @@ def fake_provider(monkeypatch):
 # ---------------------------------------------------------------------------
 # Choosing a provider
 # ---------------------------------------------------------------------------
-def test_no_keys_means_no_provider(monkeypatch):
-    for key in ("anthropic_api_key", "openai_api_key", "google_api_key"):
-        monkeypatch.setattr(settings, key, "")
-    monkeypatch.setattr(settings, "ai_provider", "")
+def test_no_key_means_no_provider(monkeypatch):
+    monkeypatch.setattr(settings, "google_api_key", "")
     assert ai_client.get_provider() is None
+    assert ai_client.has_ai() is False
+    assert ai_client.has_vision() is False
 
 
-def test_the_first_configured_provider_wins(monkeypatch):
-    for key in ("anthropic_api_key", "openai_api_key", "google_api_key"):
-        monkeypatch.setattr(settings, key, "")
-    monkeypatch.setattr(settings, "ai_provider", "")
-    monkeypatch.setattr(settings, "google_api_key", "g")
-    assert ai_client.get_provider().id == "google"
-
-    # Anthropic comes earlier in the order, so adding it takes precedence.
-    monkeypatch.setattr(settings, "anthropic_api_key", "a")
-    assert ai_client.get_provider().id == "anthropic"
-
-
-def test_ai_provider_setting_overrides_the_order(monkeypatch):
-    monkeypatch.setattr(settings, "anthropic_api_key", "a")
-    monkeypatch.setattr(settings, "google_api_key", "g")
-    monkeypatch.setattr(settings, "ai_provider", "google")
-    assert ai_client.get_provider().id == "google"
-
-
-def test_forcing_a_provider_with_no_key_yields_nothing(monkeypatch):
-    """Better to fall back to the built-in parser than to call an endpoint with
-    an empty key and get a 401 per request."""
-    monkeypatch.setattr(settings, "openai_api_key", "")
-    monkeypatch.setattr(settings, "ai_provider", "openai")
-    assert ai_client.get_provider() is None
+def test_a_key_is_all_it_takes(monkeypatch):
+    """One provider, one setting. There is no order to get wrong any more."""
+    monkeypatch.setattr(settings, "google_api_key", "k")
+    provider = ai_client.get_provider()
+    assert provider is not None
+    assert provider.id == "google"
+    assert provider.model == settings.gemini_model
+    # Gemini reads images, so asking for vision returns the same provider.
+    # Compared by value, not identity: each call builds a fresh record.
+    assert ai_client.get_provider(vision=True) == provider
 
 
 # ---------------------------------------------------------------------------

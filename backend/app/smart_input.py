@@ -270,28 +270,39 @@ def ground_text(
                 for p in in_stock
             ]
     if not items:
-        matched_product = best_match(products, parsed.product)
-        qty = int(parsed.quantity) if parsed.quantity and parsed.quantity > 0 else 1
-        if matched_product:
-            price = (
-                matched_product.purchase_price
-                if effective == "purchase"
-                else matched_product.selling_price
+        # One draft line per item the note named. A note is a list - "20 tea
+        # packets, 40 rice bags and 10 sugar packets" is three things - and
+        # building a single line here dropped the rest however well they were
+        # parsed.
+        for line in parsed.lineItems:
+            matched_product = best_match(products, line.product)
+            qty = int(line.quantity) if line.quantity and line.quantity > 0 else 1
+            if matched_product:
+                price = (
+                    matched_product.purchase_price
+                    if effective == "purchase"
+                    else matched_product.selling_price
+                )
+            elif parsed.amount and qty and len(parsed.lineItems) == 1:
+                # A stated total only divides cleanly when there is one line to
+                # divide it into; with several it belongs to the order, not to
+                # any one of them.
+                price = round2(parsed.amount / qty)
+            else:
+                price = 0
+            items.append(
+                {
+                    "productId": str(matched_product.id) if matched_product else None,
+                    "description": matched_product.name if matched_product else line.product,
+                    "quantity": qty,
+                    "unitPrice": price,
+                }
             )
-        elif parsed.amount and qty:
-            price = round2(parsed.amount / qty)
-        else:
-            price = 0
-        items = [
-            {
-                "productId": str(matched_product.id) if matched_product else None,
-                "description": matched_product.name
-                if matched_product
-                else (parsed.product or "Item"),
-                "quantity": qty,
-                "unitPrice": price,
-            }
-        ]
+
+    if not items:
+        # Nothing nameable in the note; the confirm screen starts from a blank
+        # line rather than from nothing.
+        items = [{"productId": None, "description": "Item", "quantity": 1, "unitPrice": 0}]
 
     draft.update(
         suggestedType=effective,

@@ -15,6 +15,7 @@ the local mail server, and one checks that a Telegram bot token actually works.
     python -m app.cli send-test-order "Please send 12 bags rice to Anita Stores"
     python -m app.cli check-telegram
     python -m app.cli ocr-test
+    python -m app.cli sync-env
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import getpass
+import re
 import sys
 
 from sqlalchemy import select
@@ -212,6 +214,74 @@ def _utf8_console() -> None:
                 stream.reconfigure(encoding="utf-8", errors="replace")
 
 
+def sync_env(dry_run: bool) -> int:
+    """Add settings the template has gained, keeping every value already set.
+
+    `.env` is written once, at setup, and then drifts. Every feature added since
+    brings a setting that exists only in `.env.example`, so the file falls
+    quietly behind and the symptom is always the same: "there is nowhere to put
+    this key". That has now happened twice, for the OCR key and the Telegram
+    one, which is twice more than it should.
+
+    Values already present are never touched. Only missing keys are appended,
+    each with the comment block that explains it.
+    """
+    from pathlib import Path
+
+    env_path, template_path = Path(".env"), Path(".env.example")
+    if not template_path.exists():
+        print("No .env.example here - run this from the backend directory.", file=sys.stderr)
+        return 1
+    if not env_path.exists():
+        print("No .env yet. Run `.\\run-dev.ps1 -Setup`, or copy .env.example.", file=sys.stderr)
+        return 1
+
+    key_of = re.compile(r"^\s*([A-Z][A-Z0-9_]*)\s*=")
+
+    def keys_in(text: str) -> set[str]:
+        return {m.group(1) for line in text.splitlines() if (m := key_of.match(line))}
+
+    existing = keys_in(env_path.read_text(encoding="utf-8"))
+
+    # Walk the template holding on to the comment block above each key, so an
+    # appended setting arrives with its explanation instead of bare.
+    additions: list[str] = []
+    comment: list[str] = []
+    added: list[str] = []
+    for line in template_path.read_text(encoding="utf-8").splitlines():
+        match = key_of.match(line)
+        if match:
+            if match.group(1) not in existing:
+                additions.extend(comment)
+                additions.append(line)
+                added.append(match.group(1))
+            comment = []
+        elif line.strip().startswith("#"):
+            comment.append(line)
+        else:
+            comment = []
+
+    if not added:
+        print(f"{env_path} is up to date ({len(existing)} settings).")
+        return 0
+
+    print(f"{len(added)} setting(s) in .env.example are missing from {env_path}:")
+    for name in added:
+        print(f"  {name}")
+    if dry_run:
+        print()
+        print("Nothing written (--dry-run).")
+        return 0
+
+    body = env_path.read_text(encoding="utf-8").rstrip(NEWLINE)
+    block = NEWLINE.join(additions)
+    banner = "# ---- Added by `python -m app.cli sync-env` ----"
+    env_path.write_text(body + NEWLINE * 2 + banner + NEWLINE + block + NEWLINE, encoding="utf-8")
+    print()
+    print(f"Appended to {env_path}. Nothing already set was changed.")
+    return 0
+
+
 def ocr_test(paths: list[str], prepare_only: bool) -> int:
     """Run real order slips through OCR and print exactly what came back.
 
@@ -285,6 +355,8 @@ def ocr_test(paths: list[str], prepare_only: bool) -> int:
     return 0
 
 
+NEWLINE = chr(10)
+
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".tif", ".tiff"}
 
 
@@ -318,6 +390,11 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("check-telegram", help="Verify TELEGRAM_BOT_TOKEN and print next steps.")
 
+    sync = sub.add_parser(
+        "sync-env", help="Add settings .env.example has gained, keeping your values."
+    )
+    sync.add_argument("--dry-run", action="store_true", help="List them without writing.")
+
     ocr = sub.add_parser("ocr-test", help="Run order slip images through OCR and show the text.")
     ocr.add_argument("paths", nargs="*", help="Images or a directory (default: tests/fixtures).")
     ocr.add_argument(
@@ -337,6 +414,8 @@ def main(argv: list[str] | None = None) -> int:
         )
     if args.command == "check-telegram":
         return check_telegram()
+    if args.command == "sync-env":
+        return sync_env(args.dry_run)
     if args.command == "ocr-test":
         return ocr_test(args.paths, args.prepare_only)
     return list_platform_users()

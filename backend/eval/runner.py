@@ -37,8 +37,8 @@ from app.smart_input import ground_text, read_image
 from .dataset import Catalogue, Example, image_path
 from .metrics import Report, norm
 
-#: Keys the engine chooser has to be able to switch off.
-_KEYS = ("anthropic_api_key", "openai_api_key", "google_api_key")
+#: The key the engine chooser switches off to force the heuristic.
+_KEYS = ("google_api_key",)
 
 #: Engines that run locally. Pacing them wastes minutes and protects nothing.
 OFFLINE = {"heuristic"}
@@ -56,25 +56,23 @@ def pace(engine: str, delay: float) -> None:
     if delay and engine not in OFFLINE:
         time.sleep(delay)
 
-TEXT_ENGINES = ("heuristic", "anthropic", "openai", "google")
+
+TEXT_ENGINES = ("heuristic", "google")
 IMAGE_ENGINES = ("vision", "ocrspace")
 
 
 @contextmanager
 def engine_context(name: str):
     """Force one engine for the duration, then put the settings back."""
-    saved = {k: getattr(settings, k) for k in (*_KEYS, "ai_provider", "ocr_space_api_key")}
+    saved = {k: getattr(settings, k) for k in (*_KEYS, "ocr_space_api_key")}
     try:
         if name in ("heuristic", "ocrspace"):
             # No provider at all: the heuristic parser and, for images, the
             # OCR.space fallback are what remain.
             for key in _KEYS:
                 setattr(settings, key, "")
-            settings.ai_provider = ""
         elif name == "vision":
             settings.ocr_space_api_key = ""  # so a fallback cannot be mistaken for the model
-        else:
-            settings.ai_provider = name
         yield
     finally:
         for key, value in saved.items():

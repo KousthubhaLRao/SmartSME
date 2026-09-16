@@ -77,6 +77,38 @@ def test_employee_can_record_business_activity(employee_client, workspace):
         assert employee_client.get(path).status_code == 200, path
 
 
+def test_employee_can_settle_one_party(employee_client, workspace):
+    """Settling a party is the payment they can already take, in one click.
+
+    An employee who can pay off six bills one at a time gains nothing from
+    being stopped at the button that does the same six at once; all it bought
+    was a "Pay all" the person at the counter could see but not press.
+    """
+    sale = employee_client.post(
+        "/api/sales",
+        json={
+            "partyId": workspace["customerId"],
+            "items": [
+                {
+                    "productId": workspace["productId"],
+                    "description": "Cooking Oil",
+                    "quantity": 2,
+                    "unitPrice": 140,
+                }
+            ],
+            "amountPaid": 0,
+        },
+    )
+    assert sale.status_code == 201, sale.text
+
+    settled = employee_client.post(f"/api/parties/{workspace['customerId']}/settle")
+    assert settled.status_code == 200, settled.text
+    assert settled.json()["count"] >= 1
+
+    # Clearing every balance in the business at once is still the owner's call.
+    assert employee_client.post("/api/parties/settle-all/receivable").status_code == 403
+
+
 @pytest.mark.parametrize(
     ("method", "path", "body"),
     [

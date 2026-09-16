@@ -69,7 +69,7 @@ def parse_invoice_image(base64_data: str, media_type: str) -> ParsedInvoice:
     if provider is None or not provider.vision:
         raise ValueError(
             "Image OCR needs an AI provider that can read images. Set an API key "
-            "(ANTHROPIC_API_KEY, OPENAI_API_KEY, or GOOGLE_API_KEY), or use text input instead."
+            "(GOOGLE_API_KEY is free), or use text input instead."
         )
 
     today_iso = datetime.now().strftime("%Y-%m-%d")

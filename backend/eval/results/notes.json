@@ -3,7 +3,7 @@
     {
       "id": "n001",
       "engine_used": "Heuristic",
-      "seconds": 0.0,
+      "seconds": 0.01,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -382,7 +382,7 @@
     {
       "id": "n031",
       "engine_used": "Heuristic",
-      "seconds": 0.02,
+      "seconds": 0.0,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -584,7 +584,7 @@
     {
       "id": "n047",
       "engine_used": "Heuristic",
-      "seconds": 0.0,
+      "seconds": 0.02,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -889,7 +889,7 @@
     {
       "id": "n001",
       "engine_used": "Google Gemini",
-      "seconds": 6.27,
+      "seconds": 1.41,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -902,7 +902,7 @@
     {
       "id": "n002",
       "engine_used": "Google Gemini",
-      "seconds": 2.34,
+      "seconds": 0.95,
       "party": "Kumar Traders",
       "type": "sale",
       "items": [
@@ -915,7 +915,7 @@
     {
       "id": "n003",
       "engine_used": "Google Gemini",
-      "seconds": 1.27,
+      "seconds": 1.08,
       "party": "ABC Suppliers",
       "type": "purchase",
       "items": [
@@ -928,7 +928,7 @@
     {
       "id": "n004",
       "engine_used": "Google Gemini",
-      "seconds": 0.98,
+      "seconds": 1.36,
       "party": "Sunrise Wholesale",
       "type": "purchase",
       "items": [
@@ -941,7 +941,7 @@
     {
       "id": "n005",
       "engine_used": "Google Gemini",
-      "seconds": 0.94,
+      "seconds": 1.36,
       "party": "Ramesh",
       "type": "sale",
       "items": [
@@ -954,7 +954,7 @@
     {
       "id": "n006",
       "engine_used": "Google Gemini",
-      "seconds": 0.94,
+      "seconds": 1.03,
       "party": "Ram and Sons",
       "type": "sale",
       "amount": 300.0,
@@ -968,7 +968,7 @@
     {
       "id": "n007",
       "engine_used": "Google Gemini",
-      "seconds": 1.02,
+      "seconds": 1.25,
       "party": null,
       "type": "expense",
       "amount": 3200.0,
@@ -978,7 +978,7 @@
     {
       "id": "n008",
       "engine_used": "Google Gemini",
-      "seconds": 0.94,
+      "seconds": 0.91,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -991,7 +991,7 @@
     {
       "id": "n009",
       "engine_used": "Google Gemini",
-      "seconds": 1.02,
+      "seconds": 0.97,
       "party": "Kumar Traders",
       "type": "sale",
       "items": [
@@ -1004,7 +1004,7 @@
     {
       "id": "n010",
       "engine_used": "Google Gemini",
-      "seconds": 0.98,
+      "seconds": 1.03,
       "party": "ABC Suppliers",
       "type": "purchase",
       "items": [
@@ -1030,7 +1030,7 @@
     {
       "id": "n012",
       "engine_used": "Google Gemini",
-      "seconds": 1.02,
+      "seconds": 1.05,
       "party": "Kumar Traders",
       "type": "sale",
       "items": [
@@ -1043,7 +1043,7 @@
     {
       "id": "n013",
       "engine_used": "Google Gemini",
-      "seconds": 0.91,
+      "seconds": 1.09,
       "party": "ABC Suppliers",
       "type": "purchase",
       "items": [
@@ -1056,7 +1056,7 @@
     {
       "id": "n014",
       "engine_used": "Google Gemini",
-      "seconds": 1.12,
+      "seconds": 1.0,
       "party": "Ramesh",
       "type": "sale",
       "items": [
@@ -1069,7 +1069,7 @@
     {
       "id": "n015",
       "engine_used": "Google Gemini",
-      "seconds": 0.86,
+      "seconds": 1.16,
       "party": "Sunrise Wholesale",
       "type": "purchase",
       "items": [
@@ -1082,7 +1082,7 @@
     {
       "id": "n016",
       "engine_used": "Google Gemini",
-      "seconds": 0.86,
+      "seconds": 0.97,
       "party": null,
       "type": "expense",
       "amount": 2400.0,
@@ -1092,7 +1092,7 @@
     {
       "id": "n017",
       "engine_used": "Google Gemini",
-      "seconds": 1.03,
+      "seconds": 1.3,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -1105,7 +1105,7 @@
     {
       "id": "n018",
       "engine_used": "Google Gemini",
-      "seconds": 1.12,
+      "seconds": 1.08,
       "party": "Kumar Traders",
       "type": "sale",
       "items": [
@@ -1118,7 +1118,7 @@
     {
       "id": "n019",
       "engine_used": "Google Gemini",
-      "seconds": 1.22,
+      "seconds": 1.09,
       "party": "Ram and Sons",
       "type": "sale",
       "items": [
@@ -1144,7 +1144,7 @@
     {
       "id": "n021",
       "engine_used": "Google Gemini",
-      "seconds": 1.28,
+      "seconds": 1.09,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -1157,7 +1157,7 @@
     {
       "id": "n022",
       "engine_used": "Google Gemini",
-      "seconds": 1.17,
+      "seconds": 1.06,
       "party": "Kumar Traders",
       "type": "sale",
       "items": [
@@ -1170,7 +1170,7 @@
     {
       "id": "n023",
       "engine_used": "Google Gemini",
-      "seconds": 1.14,
+      "seconds": 1.19,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -1183,7 +1183,7 @@
     {
       "id": "n024",
       "engine_used": "Google Gemini",
-      "seconds": 1.0,
+      "seconds": 1.14,
       "party": "Ramesh",
       "type": "sale",
       "items": [
@@ -1196,7 +1196,7 @@
     {
       "id": "n025",
       "engine_used": "Google Gemini",
-      "seconds": 2.05,
+      "seconds": 0.95,
       "party": null,
       "type": "expense",
       "amount": 8000.0,
@@ -1206,7 +1206,7 @@
     {
       "id": "n026",
       "engine_used": "Google Gemini",
-      "seconds": 3.33,
+      "seconds": 0.94,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -1219,7 +1219,7 @@
     {
       "id": "n027",
       "engine_used": "Google Gemini",
-      "seconds": 3.28,
+      "seconds": 7.94,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -1232,7 +1232,7 @@
     {
       "id": "n028",
       "engine_used": "Google Gemini",
-      "seconds": 18.31,
+      "seconds": 1.19,
       "party": "Kumar Traders",
       "type": "sale",
       "items": [
@@ -1245,7 +1245,7 @@
     {
       "id": "n029",
       "engine_used": "Google Gemini",
-      "seconds": 13.22,
+      "seconds": 1.16,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -1258,7 +1258,7 @@
     {
       "id": "n030",
       "engine_used": "Google Gemini",
-      "seconds": 14.17,
+      "seconds": 1.5,
       "party": null,
       "type": "expense",
       "amount": 2400.0,
@@ -1268,7 +1268,7 @@
     {
       "id": "n031",
       "engine_used": "Google Gemini",
-      "seconds": 16.81,
+      "seconds": 1.24,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -1281,7 +1281,7 @@
     {
       "id": "n032",
       "engine_used": "Google Gemini",
-      "seconds": 13.98,
+      "seconds": 1.03,
       "party": "Kumar Traders",
       "type": "sale",
       "items": [
@@ -1294,7 +1294,7 @@
     {
       "id": "n033",
       "engine_used": "Google Gemini",
-      "seconds": 13.88,
+      "seconds": 0.95,
       "party": "ABC Suppliers",
       "type": "purchase",
       "items": [
@@ -1307,7 +1307,7 @@
     {
       "id": "n034",
       "engine_used": "Google Gemini",
-      "seconds": 13.94,
+      "seconds": 0.99,
       "party": "Ramesh",
       "type": "sale",
       "items": [
@@ -1320,7 +1320,7 @@
     {
       "id": "n035",
       "engine_used": "Google Gemini",
-      "seconds": 18.5,
+      "seconds": 1.23,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -1333,7 +1333,7 @@
     {
       "id": "n036",
       "engine_used": "Google Gemini",
-      "seconds": 18.45,
+      "seconds": 1.42,
       "party": null,
       "type": "expense",
       "amount": 8000.0,
@@ -1343,7 +1343,7 @@
     {
       "id": "n037",
       "engine_used": "Google Gemini",
-      "seconds": 15.67,
+      "seconds": 0.83,
       "party": "Kumar Traders",
       "type": "sale",
       "items": [
@@ -1356,7 +1356,7 @@
     {
       "id": "n038",
       "engine_used": "Google Gemini",
-      "seconds": 15.72,
+      "seconds": 1.02,
       "party": "Sunrise Wholesale",
       "type": "purchase",
       "items": [
@@ -1369,7 +1369,7 @@
     {
       "id": "n039",
       "engine_used": "Google Gemini",
-      "seconds": 5.8,
+      "seconds": 0.88,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -1382,7 +1382,7 @@
     {
       "id": "n040",
       "engine_used": "Google Gemini",
-      "seconds": 15.44,
+      "seconds": 1.31,
       "party": "Ramesh",
       "type": "sale",
       "items": [
@@ -1395,7 +1395,7 @@
     {
       "id": "n041",
       "engine_used": "Google Gemini",
-      "seconds": 16.08,
+      "seconds": 1.14,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -1408,7 +1408,7 @@
     {
       "id": "n042",
       "engine_used": "Google Gemini",
-      "seconds": 16.31,
+      "seconds": 1.03,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -1421,7 +1421,7 @@
     {
       "id": "n043",
       "engine_used": "Google Gemini",
-      "seconds": 12.06,
+      "seconds": 0.86,
       "party": "Ramesh",
       "type": "sale",
       "items": [
@@ -1434,7 +1434,7 @@
     {
       "id": "n044",
       "engine_used": "Google Gemini",
-      "seconds": 10.14,
+      "seconds": 1.2,
       "party": null,
       "type": "expense",
       "amount": 8000.0,
@@ -1444,7 +1444,7 @@
     {
       "id": "n045",
       "engine_used": "Google Gemini",
-      "seconds": 11.05,
+      "seconds": 1.49,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -1457,7 +1457,7 @@
     {
       "id": "n046",
       "engine_used": "Google Gemini",
-      "seconds": 10.83,
+      "seconds": 1.25,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -1470,7 +1470,7 @@
     {
       "id": "n047",
       "engine_used": "Google Gemini",
-      "seconds": 12.77,
+      "seconds": 1.22,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -1483,7 +1483,7 @@
     {
       "id": "n048",
       "engine_used": "Google Gemini",
-      "seconds": 9.38,
+      "seconds": 1.22,
       "party": null,
       "type": "expense",
       "amount": 2400.0,
@@ -1493,7 +1493,7 @@
     {
       "id": "n049",
       "engine_used": "Google Gemini",
-      "seconds": 12.66,
+      "seconds": 1.55,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -1506,7 +1506,7 @@
     {
       "id": "n050",
       "engine_used": "Google Gemini",
-      "seconds": 15.72,
+      "seconds": 1.22,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -1519,7 +1519,7 @@
     {
       "id": "n051",
       "engine_used": "Google Gemini",
-      "seconds": 1.11,
+      "seconds": 0.92,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -1532,7 +1532,7 @@
     {
       "id": "n052",
       "engine_used": "Google Gemini",
-      "seconds": 14.0,
+      "seconds": 0.86,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -1545,7 +1545,7 @@
     {
       "id": "n053",
       "engine_used": "Google Gemini",
-      "seconds": 1.06,
+      "seconds": 1.45,
       "party": "Ramesh",
       "type": "sale",
       "items": [
@@ -1558,7 +1558,7 @@
     {
       "id": "n054",
       "engine_used": "Google Gemini",
-      "seconds": 15.94,
+      "seconds": 1.34,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -1571,7 +1571,7 @@
     {
       "id": "n055",
       "engine_used": "Google Gemini",
-      "seconds": 19.41,
+      "seconds": 1.0,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -1584,7 +1584,7 @@
     {
       "id": "n056",
       "engine_used": "Google Gemini",
-      "seconds": 0.98,
+      "seconds": 1.25,
       "party": "Kumar Traders",
       "type": "sale",
       "items": [
@@ -1597,7 +1597,7 @@
     {
       "id": "n057",
       "engine_used": "Google Gemini",
-      "seconds": 17.34,
+      "seconds": 1.64,
       "party": "ABC Suppliers",
       "type": "purchase",
       "items": [
@@ -1610,7 +1610,7 @@
     {
       "id": "n058",
       "engine_used": "Google Gemini",
-      "seconds": 18.22,
+      "seconds": 1.5,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -1623,7 +1623,7 @@
     {
       "id": "n059",
       "engine_used": "Google Gemini",
-      "seconds": 16.81,
+      "seconds": 1.19,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -1636,7 +1636,7 @@
     {
       "id": "n060",
       "engine_used": "Google Gemini",
-      "seconds": 1.02,
+      "seconds": 1.06,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -1649,7 +1649,7 @@
     {
       "id": "n061",
       "engine_used": "Google Gemini",
-      "seconds": 10.12,
+      "seconds": 1.47,
       "party": "Anita Stores",
       "type": "sale",
       "amount": 1350.0,
@@ -1663,7 +1663,7 @@
     {
       "id": "n062",
       "engine_used": "Google Gemini",
-      "seconds": 3.17,
+      "seconds": 1.38,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -1676,20 +1676,20 @@
     {
       "id": "n063",
       "engine_used": "Google Gemini",
-      "seconds": 0.98,
+      "seconds": 0.86,
       "party": "Ramesh",
       "type": "sale",
       "items": [
         {
-          "product": "Tea Powder 500g",
-          "quantity": 2
+          "product": "Item",
+          "quantity": 1
         }
       ]
     },
     {
       "id": "n064",
       "engine_used": "Google Gemini",
-      "seconds": 0.92,
+      "seconds": 1.97,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -1702,7 +1702,7 @@
     {
       "id": "n065",
       "engine_used": "Google Gemini",
-      "seconds": 0.95,
+      "seconds": 1.39,
       "party": null,
       "type": "expense",
       "amount": 12000.0,
@@ -1712,7 +1712,7 @@
     {
       "id": "n066",
       "engine_used": "Google Gemini",
-      "seconds": 1.05,
+      "seconds": 1.12,
       "party": null,
       "type": "expense",
       "amount": 800.0,
@@ -1722,7 +1722,7 @@
     {
       "id": "n067",
       "engine_used": "Google Gemini",
-      "seconds": 0.94,
+      "seconds": 1.28,
       "party": "Anita Stores",
       "type": "sale",
       "items": [
@@ -1735,7 +1735,7 @@
     {
       "id": "n068",
       "engine_used": "Google Gemini",
-      "seconds": 1.02,
+      "seconds": 1.05,
       "party": "Ram and Sons",
       "type": "sale",
       "items": [
@@ -1748,7 +1748,7 @@
     {
       "id": "n069",
       "engine_used": "Google Gemini",
-      "seconds": 0.97,
+      "seconds": 1.02,
       "party": "Ram and Sons",
       "type": "sale",
       "items": [
@@ -1761,7 +1761,7 @@
     {
       "id": "n070",
       "engine_used": "Google Gemini",
-      "seconds": 1.12,
+      "seconds": 0.97,
       "party": "Ramesh",
       "type": "sale",
       "items": [

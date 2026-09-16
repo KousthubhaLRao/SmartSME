@@ -18,6 +18,7 @@ from sqlalchemy import delete, func, select
 from ..core.config import settings
 from ..core.deps import CurrentUser, Db, require
 from ..core.roles import P
+from ..inbound import telegram as telegram_channel
 from ..inbound.collector import collect
 from ..inbound.pipeline import STATUS_LABELS
 from ..models import ChannelLink, InboundMessage
@@ -26,6 +27,14 @@ from ..smart_input import publish_draft
 from ..worker import drain_queue
 
 router = APIRouter(prefix="/api/inbox", tags=["inbox"])
+
+
+def _channel_status() -> dict:
+    """What is switched on, for the page to say plainly."""
+    return {
+        "email": settings.email_ingest_enabled,
+        "telegram": telegram_channel.enabled(),
+    }
 
 
 def _row(message: InboundMessage) -> dict:
@@ -77,6 +86,11 @@ def list_inbox(
         "pending": counts.get("pending", 0),
         "inboxToken": ctx.business.inbox_token,
         "inboxAddress": f"orders+{ctx.business.inbox_token}@{settings.inbox_domain}",
+        # Which channels are actually switched on. Without this the page cannot
+        # tell "no new mail" from "nobody is collecting mail", and those look
+        # identical from the outside - which is exactly how an afternoon gets
+        # spent wondering why a message sitting in Mailpit never arrives.
+        "channels": _channel_status(),
         "links": [
             {
                 "id": str(link.id),
@@ -91,6 +105,13 @@ def list_inbox(
 
 @router.get("/pending-count", dependencies=[Depends(require(P.DATA_READ))])
 def pending_count(ctx: CurrentUser, db: Db) -> dict:
+    """How many messages are waiting for a decision. One COUNT, nothing else.
+
+    This is what the sidebar badge polls from every page, so it is kept to a
+    single indexed count rather than reusing the list route: nobody should pay
+    for drafts, channel links and a page of rows to learn that the number is
+    still zero.
+    """
     n = db.scalar(
         select(func.count(InboundMessage.id)).where(
             InboundMessage.business_id == ctx.business.id,
@@ -124,6 +145,7 @@ def collect_now(ctx: CurrentUser, db: Db) -> dict:
         "checked": True,
         "queued": after - before,
         "pending": db.scalar(mine.where(InboundMessage.status == "pending")) or 0,
+        "channels": _channel_status(),
     }
 
 
@@ -140,6 +162,12 @@ def accept(message_id: uuid.UUID, payload: dict[str, Any], ctx: CurrentUser, db:
     draft = payload or message.draft
     if not draft:
         raise HTTPException(status_code=400, detail="Nothing to record from this message.")
+
+    # How the order reached the shop is the channel it actually arrived on, not
+    # whatever the review screen echoed back. Without this every inbound order
+    # is stored as if somebody had typed it into Smart Input, and the ledger
+    # cannot tell an emailed order from a Telegram one from a typed one.
+    draft = {**draft, "source": message.channel}
 
     try:
         result = publish_draft(db, ctx.business.id, draft, ctx.user.id)
@@ -213,11 +241,21 @@ def unlink(link_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
 
 
 def _pending_or_404(db: Db, ctx: CurrentUser, message_id: uuid.UUID) -> InboundMessage:
+    """The message, locked, if it is still waiting for a decision.
+
+    The row is locked because an owner and an employee both have the Inbox open
+    on the same order, and both see the same Accept button. Without the lock
+    they can each read `pending`, each publish, and the shop ends up with the
+    order recorded twice. With it, the second one waits, re-reads `accepted`
+    and is told the message has already been dealt with.
+    """
     message = db.scalar(
-        select(InboundMessage).where(
+        select(InboundMessage)
+        .where(
             InboundMessage.id == message_id,
             InboundMessage.business_id == ctx.business.id,
         )
+        .with_for_update()
     )
     if message is None:
         raise HTTPException(status_code=404, detail="Message not found.")

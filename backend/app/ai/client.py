@@ -1,18 +1,19 @@
-"""Provider-agnostic AI layer for the Smart Input Engine.
+"""The AI layer: one provider, one call.
 
-Works with whichever API key is configured, with no code changes to switch:
+Google Gemini, because its free tier needs no card and the same key reads both
+a typed note and a photographed order slip. Set `GOOGLE_API_KEY` and it is used;
+leave it unset and everything still works - text falls back to the built-in
+regex parser and photographs to OCR.space.
 
-  - Anthropic  (ANTHROPIC_API_KEY  + ANTHROPIC_MODEL)
-  - OpenAI, or ANY OpenAI-compatible endpoint  (OPENAI_API_KEY + OPENAI_BASE_URL)
-  - Google Gemini (GOOGLE_API_KEY + GEMINI_MODEL)
+This used to be provider-agnostic, with Anthropic, OpenAI-compatible endpoints
+and Groq alongside Gemini. That flexibility was never used and cost real money
+to carry: four sets of settings in `.env`, four code paths, four sets of pinned
+model names to go stale - two of which were silently returning 404 before anyone
+checked. One provider that is actually configured is worth more than four that
+are not.
 
-Gemini is the one to reach for: its free tier needs no card, and the same key
-reads text notes and photographed order slips. With no key at all, text falls
-back to the built-in parser and images to OCR.space.
-
-If several keys are set, AI_PROVIDER picks one; otherwise the first configured
-provider in the order above wins. With no key at all, callers fall back to the
-built-in heuristic parser.
+Swapping providers later is a contained change: one `complete()` implementation
+and the settings behind it.
 """
 
 from __future__ import annotations
@@ -95,7 +96,6 @@ class AiProvider:
     model: str
     vision: bool
     api_key: str
-    base_url: str = ""
 
     def complete(
         self,
@@ -108,12 +108,7 @@ class AiProvider:
         if _breaker_is_open():
             raise ProviderUnavailable(f"{self.label} is failing; skipping it for now")
         try:
-            if self.id == "anthropic":
-                out = _anthropic_complete(self, prompt, system, image, max_tokens)
-            elif self.id == "google":
-                out = _gemini_complete(self, prompt, system, image, max_tokens)
-            else:
-                out = _openai_complete(self, prompt, system, image, max_tokens)
+            out = _gemini_complete(self, prompt, system, image, max_tokens)
         except Exception:
             _record_failure()
             raise
@@ -121,88 +116,6 @@ class AiProvider:
         return out
 
 
-# ---------------------------------------------------------------------------
-# Anthropic
-# ---------------------------------------------------------------------------
-def _anthropic_complete(
-    p: AiProvider, prompt: str, system: str | None, image: AiImage | None, max_tokens: int
-) -> str:
-    content: list[dict] = []
-    if image:
-        content.append(
-            {
-                "type": "image",
-                "source": {"type": "base64", "media_type": image.media_type, "data": image.base64},
-            }
-        )
-    content.append({"type": "text", "text": prompt})
-
-    body: dict = {
-        "model": p.model,
-        "max_tokens": max_tokens,
-        "messages": [{"role": "user", "content": content}],
-    }
-    if system:
-        body["system"] = system
-
-    with httpx.Client(timeout=TIMEOUT) as client:
-        res = client.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key": p.api_key,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
-            },
-            json=body,
-        )
-    if res.status_code >= 400:
-        raise RuntimeError(f"AI request failed ({res.status_code}). {res.text[:200]}")
-    data = res.json()
-    return "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text")
-
-
-# ---------------------------------------------------------------------------
-# OpenAI / any OpenAI-compatible endpoint
-# ---------------------------------------------------------------------------
-def _openai_complete(
-    p: AiProvider, prompt: str, system: str | None, image: AiImage | None, max_tokens: int
-) -> str:
-    messages: list[dict] = []
-    if system:
-        messages.append({"role": "system", "content": system})
-    if image:
-        messages.append(
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt},
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:{image.media_type};base64,{image.base64}"},
-                    },
-                ],
-            }
-        )
-    else:
-        messages.append({"role": "user", "content": prompt})
-
-    base = p.base_url.rstrip("/")
-    with httpx.Client(timeout=TIMEOUT) as client:
-        res = client.post(
-            f"{base}/chat/completions",
-            headers={"Authorization": f"Bearer {p.api_key}", "Content-Type": "application/json"},
-            json={"model": p.model, "messages": messages, "max_tokens": max_tokens},
-        )
-    if res.status_code >= 400:
-        raise RuntimeError(f"AI request failed ({res.status_code}). {res.text[:200]}")
-    data = res.json()
-    choices = data.get("choices") or []
-    return (choices[0].get("message", {}) or {}).get("content", "") if choices else ""
-
-
-# ---------------------------------------------------------------------------
-# Google Gemini
-# ---------------------------------------------------------------------------
 def _gemini_complete(
     p: AiProvider, prompt: str, system: str | None, image: AiImage | None, max_tokens: int
 ) -> str:
@@ -223,6 +136,15 @@ def _gemini_complete(
                 "generationConfig": {
                     "maxOutputTokens": max_tokens,
                     "responseMimeType": "application/json",
+                    # Zero, because this is extraction and not writing. Left at
+                    # the default, the same note produced different drafts on
+                    # repeated runs: measured on five notes over three runs,
+                    # two came back different - once the customer's name kept
+                    # its Kannada case-ending and stopped matching, once the
+                    # line items vanished entirely and became "Item x1".
+                    # Somebody typing the same order twice must not get two
+                    # different sales.
+                    "temperature": 0,
                 },
             },
         )
@@ -237,62 +159,23 @@ def _gemini_complete(
     )
 
 
-# ---------------------------------------------------------------------------
-# Selection
-# ---------------------------------------------------------------------------
-def _build(provider_id: str) -> AiProvider | None:
-    if provider_id == "anthropic" and settings.anthropic_api_key:
-        return AiProvider(
-            id="anthropic",
-            label="Anthropic Claude",
-            model=settings.anthropic_model,
-            vision=True,
-            api_key=settings.anthropic_api_key,
-        )
-    if provider_id == "openai" and settings.openai_api_key:
-        return AiProvider(
-            id="openai",
-            label="OpenAI-compatible",
-            model=settings.openai_model,
-            vision=True,
-            api_key=settings.openai_api_key,
-            base_url=settings.openai_base_url,
-        )
-    if provider_id == "google" and settings.google_api_key:
-        return AiProvider(
-            id="google",
-            label="Google Gemini",
-            model=settings.gemini_model,
-            vision=True,
-            api_key=settings.google_api_key,
-        )
-    return None
-
-
-ORDER = ("anthropic", "openai", "google")
-
-
 def get_provider(*, vision: bool = False) -> AiProvider | None:
-    """The provider to use, or None when nothing configured can do the job.
+    """The configured provider, or None when there is no key.
 
-    `vision=True` asks for one that can read an image, and that is not a detail
-    the caller can ignore: providers come and go from this list, and a key that
-    used to serve a vision model may not any more. Picking the first configured
-    key regardless meant a text-only account could shadow a perfectly good
-    vision-capable one, and photographed orders failed with "no vision
-    provider" while a vision provider sat right there in the same .env.
-
-    AI_PROVIDER still forces the choice - including into a provider that cannot
-    see, which is the operator's business to get right.
+    `vision` is kept in the signature even though Gemini reads images either
+    way: callers say what they need, and the day a text-only model is configured
+    the check is already in the right place rather than needing to be found.
     """
-    forced = (settings.ai_provider or "").lower().strip()
-    if forced in ORDER:
-        return _build(forced)
-    for pid in ORDER:
-        p = _build(pid)
-        if p and (p.vision or not vision):
-            return p
-    return None
+    if not settings.google_api_key:
+        return None
+    provider = AiProvider(
+        id="google",
+        label="Google Gemini",
+        model=settings.gemini_model,
+        vision=True,
+        api_key=settings.google_api_key,
+    )
+    return provider if provider.vision or not vision else None
 
 
 def has_ai() -> bool:

@@ -199,8 +199,16 @@ def delete_party(party_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
     return {"ok": True}
 
 
-@router.post("/parties/{party_id}/settle", dependencies=[Depends(require(P.DATA_MANAGE))])
+@router.post("/parties/{party_id}/settle", dependencies=[Depends(require(P.TXN_WRITE))])
 def settle_one(party_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
+    """Clear one party's outstanding documents in a single step.
+
+    Gated on TXN_WRITE, the same permission as taking a payment against one
+    invoice, because that is all this is: the same act, for one party, without
+    making the person at the counter click through six bills one at a time.
+    Requiring more only meant an employee who could settle a party in six
+    clicks could not do it in one, which protected nothing.
+    """
     try:
         result = settle_party(db, ctx.business.id, party_id)
     except ValueError as err:
@@ -210,6 +218,13 @@ def settle_one(party_id: uuid.UUID, ctx: CurrentUser, db: Db) -> dict:
 
 @router.post("/parties/settle-all/{kind}", dependencies=[Depends(require(P.DATA_MANAGE))])
 def settle_all(kind: str, ctx: CurrentUser, db: Db) -> dict:
+    """Clear every customer, or every supplier, at once.
+
+    This one stays with the owner. It is not bookkeeping for a party someone
+    actually dealt with — it writes off balances across the whole business,
+    including parties the person clicking has never met, in one irreversible
+    step. That is a decision about the books, not a record of a payment.
+    """
     if kind not in ("receivable", "payable"):
         raise HTTPException(status_code=400, detail="kind must be receivable or payable.")
     return settle_all_outstanding(db, ctx.business.id, kind).model_dump()

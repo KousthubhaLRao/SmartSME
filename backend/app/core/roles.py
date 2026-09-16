@@ -44,10 +44,12 @@ class P:
     #: Read anything in the business: documents, catalogue, reports, events.
     DATA_READ = "data:read"
     #: Record new business activity — sales, purchases, expenses, payments,
-    #: stock adjustments and Smart Input drafts. Additive only.
+    #: stock adjustments and Smart Input drafts. Additive only. Includes
+    #: settling one party's outstanding documents, which is the same act as
+    #: taking their payments one by one.
     TXN_WRITE = "txn:write"
-    #: Change or undo what is already recorded: cancel, delete, back-date,
-    #: settle outstanding balances. Destructive.
+    #: Change or undo what is already recorded: cancel, delete, back-date, or
+    #: write off every balance in the business at once. Destructive.
     DATA_MANAGE = "data:manage"
     #: Maintain the catalogue: create and edit products and parties.
     CATALOG_WRITE = "catalog:write"

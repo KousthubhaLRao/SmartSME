@@ -235,7 +235,10 @@ def test_an_admin_cannot_dismiss_a_tenants_order(client, admin_client, business_
 def test_collect_reports_this_businesss_own_queue(client):
     """It used to return the counts for every tenant on the server."""
     body = client.post("/api/inbox/collect").json()
-    assert set(body) == {"checked", "queued", "pending"}
+    # The counts are what this test is about, not the exact shape of the
+    # response - pinning the whole key set just broke when a later change added
+    # the channel status, which was a new feature rather than a regression.
+    assert {"checked", "queued", "pending"} <= set(body)
     assert body["queued"] == 0 and body["pending"] == 0
 
 
@@ -284,8 +287,8 @@ def test_a_failing_provider_is_dropped_rather_than_retried(monkeypatch):
         attempts["n"] += 1
         raise TimeoutError("provider is not answering")
 
-    monkeypatch.setattr(ai_client, "_openai_complete", always_fails)
-    provider = ai_client.AiProvider(id="openai", label="Test", model="m", vision=False, api_key="k")
+    monkeypatch.setattr(ai_client, "_gemini_complete", always_fails)
+    provider = ai_client.AiProvider(id="google", label="Test", model="m", vision=True, api_key="k")
 
     failures = 0
     for _ in range(10):
@@ -299,7 +302,7 @@ def test_a_failing_provider_is_dropped_rather_than_retried(monkeypatch):
 
     # A working provider clears it again.
     ai_client.reset_breaker()
-    monkeypatch.setattr(ai_client, "_openai_complete", lambda *a, **k: "{}")
+    monkeypatch.setattr(ai_client, "_gemini_complete", lambda *a, **k: "{}")
     assert provider.complete(prompt="anything") == "{}"
 
 
@@ -361,3 +364,77 @@ def test_an_ordinary_large_order_still_goes_through(client, workspace):
         },
     )
     assert response.status_code == 201, response.text
+
+
+# ---------------------------------------------------------------------------
+# 8. A note listing several items produced one
+# ---------------------------------------------------------------------------
+def test_a_note_listing_three_things_yields_three_items():
+    """`ParsedCommand` held a single `product`, so a note that named three
+    silently became one - for the model and the regex parser alike, because the
+    shape gave neither anywhere to put the rest. Reported from a real Telegram
+    message and a real email, both of which arrived as "Item x1"."""
+    from app.ai.nlp import heuristic_parse
+
+    parsed = heuristic_parse(
+        "bought 20 tea packets, 40 rice bags and 10 sugar packets from Sunrise Wholesale"
+    )
+    assert parsed.party == "Sunrise Wholesale"
+    assert [(i.product, i.quantity) for i in parsed.lineItems] == [
+        ("Tea", 20.0),
+        ("Rice", 40.0),
+        ("Sugar", 10.0),
+    ]
+
+
+def test_items_split_on_quantities_and_not_on_the_word_and():
+    """The safe rule, and the reason it is safe.
+
+    "2 kg salt and pepper" has one quantity and stays one item; "5 rice 2 sugar"
+    has two and becomes two. Splitting on the word "and" would get both wrong,
+    which is the bug that put a sale through to the wrong customer once already.
+    """
+    from app.ai.nlp import heuristic_parse
+
+    single = heuristic_parse("sold 2 kg salt and pepper to Anita Stores")
+    assert [i.product for i in single.lineItems] == ["Salt and Pepper"]
+
+    double = heuristic_parse("anita stores 5 rice 2 sugar")
+    assert [(i.product, i.quantity) for i in double.lineItems] == [("Rice", 5.0), ("Sugar", 2.0)]
+
+
+def test_a_customer_named_after_for_is_found():
+    """ "40 tea packets for Kumar Traders" is how people actually write it, and
+    only "to"/"from" were recognised. "for" followed by a number is still a
+    price, not a customer."""
+    from app.ai.nlp import heuristic_parse
+
+    assert heuristic_parse("5 kg rice for Anita Stores").party == "Anita Stores"
+    priced = heuristic_parse("sold 2 boxes to Ram and Sons for 1200")
+    assert priced.party == "Ram and Sons"
+    assert priced.amount == 1200
+
+
+def test_the_singular_views_still_answer(client, workspace):
+    """`product` and `quantity` are now derived from the first line item, so the
+    callers that only ever wanted one keep working."""
+    from app.ai.nlp import heuristic_parse
+
+    parsed = heuristic_parse("sold 5 kg rice to Anita Stores")
+    assert parsed.product == "Rice"
+    assert parsed.quantity == 5
+    assert parsed.dict()["product"] == "Rice"
+
+    empty = heuristic_parse("paid electricity bill 3200")
+    assert empty.product is None and empty.quantity is None
+
+
+def test_every_item_reaches_the_draft(client, workspace):
+    """End to end: three items in, three priced lines out."""
+    draft = client.post(
+        "/api/input/parse-text",
+        json={"text": "sold 2 Cooking Oil and 3 Cooking Oil to Anita Stores"},
+    ).json()["draft"]
+    assert len(draft["items"]) == 2, draft["items"]
+    assert all(i["productId"] == workspace["productId"] for i in draft["items"])
+    assert [i["quantity"] for i in draft["items"]] == [2, 3]

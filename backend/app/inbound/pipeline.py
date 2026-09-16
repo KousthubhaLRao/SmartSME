@@ -15,6 +15,7 @@ can accept.
 
 from __future__ import annotations
 
+import base64
 import logging
 import uuid
 from dataclasses import dataclass
@@ -25,7 +26,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..models import Business, ChannelLink, InboundMessage
-from ..smart_input import draft_from_text
+from ..smart_input import draft_from_image, draft_from_text
 
 log = logging.getLogger("smartsme.inbound")
 
@@ -61,6 +62,10 @@ class IncomingMessage:
     #: A Telegram chat sends many messages: each needs its own `external_id` to
     #: deduplicate, but they all route by the one chat id.
     route_key: str | None = None
+    #: A photographed order, when the message carried one instead of text. Read
+    #: by the same engines the Smart Input upload uses.
+    image: bytes | None = None
+    image_media_type: str = "image/jpeg"
 
 
 def route(db: Session, message: IncomingMessage) -> uuid.UUID | None:
@@ -97,6 +102,10 @@ def ingest(db: Session, message: IncomingMessage) -> InboundMessage | None:
         return None
 
     body = (message.body or "").strip()[:MAX_BODY]
+    if message.image and not body:
+        # The queue lists messages by their text; a bare photo needs something
+        # to show before anyone opens it.
+        body = "(photographed order)"
     row = InboundMessage(
         business_id=business_id,
         channel=message.channel,
@@ -112,7 +121,18 @@ def ingest(db: Session, message: IncomingMessage) -> InboundMessage | None:
     # parser is given both.
     text = f"{message.subject}. {body}" if message.subject else body
     try:
-        row.draft = draft_from_text(db, business_id, text)
+        if message.image:
+            # A photographed order takes the image path - the same one the
+            # Smart Input upload uses, so a slip sent to the bot is read by the
+            # same engines, with the same fallback, as one uploaded in the app.
+            row.draft = draft_from_image(
+                db,
+                business_id,
+                base64.b64encode(message.image).decode(),
+                message.image_media_type,
+            )
+        else:
+            row.draft = draft_from_text(db, business_id, text)
         row.status = "pending"
     except ValueError as err:
         # An empty or unreadable message is still worth keeping: someone should

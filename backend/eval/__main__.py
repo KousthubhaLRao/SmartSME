@@ -27,21 +27,16 @@ from .runner import IMAGE_ENGINES, TEXT_ENGINES, run_notes, run_slips
 
 
 def available_text_engines() -> list[str]:
-    """Heuristic always; a provider only when its key is present."""
+    """The heuristic always; Gemini when its key is present."""
     engines = ["heuristic"]
-    for name, key in (
-        ("anthropic", settings.anthropic_api_key),
-        ("openai", settings.openai_api_key),
-        ("google", settings.google_api_key),
-    ):
-        if key:
-            engines.append(name)
+    if settings.google_api_key:
+        engines.append("google")
     return engines
 
 
 def available_image_engines() -> list[str]:
     engines = []
-    if any((settings.anthropic_api_key, settings.openai_api_key, settings.google_api_key)):
+    if settings.google_api_key:
         engines.append("vision")
     if ocr_space.enabled():
         engines.append("ocrspace")

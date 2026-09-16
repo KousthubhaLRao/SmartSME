@@ -7,7 +7,7 @@ regex parser covers the same fields, so the feature degrades instead of dying.
 from __future__ import annotations
 
 import re
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 
 from .categories import PROMPT_LIST, canonical_category
@@ -18,11 +18,32 @@ EventType = str  # SALE_CREATED | PURCHASE_CREATED | ORDER_CREATED | EXPENSE_ADD
 
 
 @dataclass(slots=True)
-class ParsedCommand:
-    eventType: EventType = "SALE_CREATED"
-    party: str | None = None
+class ParsedLine:
+    """One thing ordered, and how much of it."""
+
     product: str | None = None
     quantity: float | None = None
+
+
+@dataclass(slots=True)
+class ParsedCommand:
+    """What one note says.
+
+    `lineItems` is a list because notes are lists: "20 tea packets, 40 rice bags
+    and 10 sugar packets" is one order with three items, and this used to hold a
+    single `product`, so two of those three were simply dropped - by the model
+    and the regex parser alike, since the shape gave neither anywhere to put
+    them. A photograph of the same order came out right, because the image path
+    always had `lineItems`.
+
+    `product` and `quantity` remain as read-only views of the first item, so the
+    many callers that only ever want one keep working and there is still only
+    one place the answer lives.
+    """
+
+    eventType: EventType = "SALE_CREATED"
+    party: str | None = None
+    lineItems: list[ParsedLine] = field(default_factory=list)
     amount: float | None = None
     category: str | None = None
     #: True when the note refers to the whole inventory ("sell the entire stock").
@@ -34,8 +55,22 @@ class ParsedCommand:
     #: The provider label that parsed it, or "Heuristic".
     engine: str = "Heuristic"
 
+    @property
+    def product(self) -> str | None:
+        """The first item's product, for callers that only handle one."""
+        return self.lineItems[0].product if self.lineItems else None
+
+    @property
+    def quantity(self) -> float | None:
+        return self.lineItems[0].quantity if self.lineItems else None
+
     def dict(self) -> dict:
-        return asdict(self)
+        out = asdict(self)
+        # The derived views are not fields, so `asdict` cannot see them; the
+        # JSON this produces is read by the frontend and by tests.
+        out["product"] = self.product
+        out["quantity"] = self.quantity
+        return out
 
 
 SYSTEM = (
@@ -51,11 +86,10 @@ def _prompt(text: str, today_iso: str) -> str:
     return f"""Extract one business event from the note and return ONLY a single minified JSON object with exactly these keys:
 - eventType: one of "SALE_CREATED" (sold/sale), "PURCHASE_CREATED" (bought/purchased from a supplier), "ORDER_CREATED" (a customer wants/needs something later), "EXPENSE_ADDED" (rent, salary, utilities, fuel, etc.).
 - party: the customer or supplier name, or null.
-- product: the product name (singular, no unit words like "bags"/"packets"), or null.
-- quantity: numeric quantity, or null.
+- lineItems: an array of every product the note mentions, each {{ "product": string (singular, no unit words like "bags"/"packets"), "quantity": number }}. A note listing three things has three entries. Use an empty array when no product is named.
 - amount: total money value in rupees if stated, else null.
 - category: for EXPENSE_ADDED, exactly one of: {PROMPT_LIST}. Choose the closest; do not invent another word and do not answer in any language but English. null for everything else.
-- allInventory: true if the note refers to the ENTIRE inventory / all stock / everything in stock (e.g. "sell the entire inventory", "clear out all stock", "sell everything"); otherwise false. When true, leave product and quantity as null.
+- allInventory: true if the note refers to the ENTIRE inventory / all stock / everything in stock (e.g. "sell the entire inventory", "clear out all stock", "sell everything"); otherwise false. When true, leave lineItems empty.
 - discountType: "percentage" if a percentage discount is mentioned (e.g. "10% off", "discount of 10%"), "amount" if a flat money discount is mentioned (e.g. "discount of 300 rupees"), otherwise "none".
 - discountValue: the numeric discount, the percent number for "percentage" or the rupee figure for "amount"; 0 when discountType is "none".
 - date: the date the transaction happened as "YYYY-MM-DD" if the note states one (e.g. "on 20th August 2026", "yesterday", "3 Sept"); otherwise null. Today is {today_iso}, resolve relative words against it, and assume a bare day+month is the most recent past occurrence.
@@ -98,6 +132,26 @@ def _num(v: object) -> float | None:
         return None
 
 
+def _lines(p: dict) -> list[ParsedLine]:
+    """The line items a model returned, tolerating the older single-field shape."""
+    raw = p.get("lineItems")
+    if isinstance(raw, list):
+        out = []
+        for entry in raw:
+            if not isinstance(entry, dict):
+                continue
+            product = entry.get("product") or None
+            if product:
+                out.append(ParsedLine(product=str(product), quantity=_num(entry.get("quantity"))))
+        if out:
+            return out
+    # A model that answered the old way, or one that ignored the array.
+    product = p.get("product") or None
+    if product:
+        return [ParsedLine(product=str(product), quantity=_num(p.get("quantity")))]
+    return []
+
+
 def _normalize(p: dict) -> ParsedCommand:
     discount_type = p.get("discountType")
     if discount_type not in ("amount", "percentage"):
@@ -107,8 +161,7 @@ def _normalize(p: dict) -> ParsedCommand:
     return ParsedCommand(
         eventType=p.get("eventType") or "SALE_CREATED",
         party=p.get("party") or None,
-        product=p.get("product") or None,
-        quantity=_num(p.get("quantity")),
+        lineItems=_lines(p),
         amount=_num(p.get("amount")),
         # Pinned to the fixed list, whatever the model answered: an
         # expense report is only useful if the same cost lands under the
@@ -263,6 +316,42 @@ STOP_WORDS = (
 _MINOR_WORDS = {"and", "of", "the", "for", "at", "to"}
 
 
+#: A quantity, then the words belonging to it, ending at the next quantity, a
+#: stop word, or the end of the sentence.
+_ITEM_RUN = re.compile(
+    rf"(\d[\d,]*(?:\.\d+)?)\s+(.*?)(?=\s+\d[\d,]*(?:\.\d+)?\s|\s+(?:{STOP_WORDS})\b|\s*[.!?]|$)",
+    re.IGNORECASE,
+)
+
+#: Words that join two items rather than belong to either.
+_JOINERS = re.compile(r"^(?:and|aur|mattu|plus|with|&|,)\s+|\s+(?:and|aur|mattu|plus|&)$", re.I)
+
+
+def _read_items(text: str) -> list[ParsedLine]:
+    """Every "<quantity> <product>" the note contains, in order.
+
+    Notes are lists. "20 tea packets, 40 rice bags and 10 sugar packets" is three
+    items, and reading only the first silently dropped two thirds of an order.
+
+    The split is on **quantities**, not on the word "and", which is the whole
+    reason it is safe: "2 kg salt and pepper" has one quantity, so it stays one
+    item called salt and pepper, while "2 salt 3 pepper" has two and becomes
+    two. Splitting on conjunctions would get that exactly backwards.
+    """
+    out: list[ParsedLine] = []
+    for match in _ITEM_RUN.finditer(text):
+        words = _JOINERS.sub("", match[2].strip(" ,.;:-")).strip()
+        cleaned = re.sub(r"\s+", " ", UNIT_WORDS.sub(" ", words)).strip(" ,.;:-")
+        if not cleaned:
+            continue
+        try:
+            quantity = float(match[1].replace(",", ""))
+        except ValueError:
+            continue
+        out.append(ParsedLine(product=cleaned, quantity=quantity if quantity > 0 else None))
+    return out
+
+
 def _title_case(s: str) -> str:
     words = [w for w in s.lower().split() if w]
     return " ".join(
@@ -329,8 +418,11 @@ def heuristic_parse(text: str) -> ParsedCommand:
     )
     amount = float(amt_match[1].replace(",", "")) if amt_match else None
 
+    # "for" counts as well, but only when a name follows rather than a number:
+    # "40 tea packets for Kumar Traders" names a customer, "2 boxes for 1200"
+    # names a price. Real messages use it constantly.
     party_match = re.search(
-        rf"\b(?:to|from)\s+([A-Za-z0-9&.'\s{DEVANAGARI}{KANNADA}]+?)"
+        rf"\b(?:to|from|for)\s+(?!\d)([A-Za-z0-9&.'\s{DEVANAGARI}{KANNADA}]+?)"
         rf"(?=\s+(?:{STOP_WORDS})\b|\s+\d|\s*[.,!?₹]|$)",
         text,
         re.IGNORECASE,
@@ -350,8 +442,7 @@ def heuristic_parse(text: str) -> ParsedCommand:
         return ParsedCommand(
             eventType=event_type,
             party=None,
-            product=None,
-            quantity=None,
+            lineItems=[],
             amount=amount,
             category=category,
             allInventory=False,
@@ -360,22 +451,15 @@ def heuristic_parse(text: str) -> ParsedCommand:
             date=date,
         )
 
-    # Product = words between the quantity and "to/from", with unit words stripped.
-    product: str | None = None
-    mid = re.search(
-        rf"\b\d[\d,]*(?:\.\d+)?\s+(.*?)(?=\s+(?:{STOP_WORDS})\b|\s*[.,!?]|$)",
-        text,
-        re.IGNORECASE,
-    )
-    if mid:
-        cleaned = re.sub(r"\s+", " ", UNIT_WORDS.sub(" ", mid[1])).strip()
-        product = cleaned or None
+    items = _read_items(text)
 
     return ParsedCommand(
         eventType=event_type,
         party=party,
-        product=_title_case(product) if product else None,
-        quantity=first_number,
+        lineItems=[
+            ParsedLine(product=_title_case(i.product or ""), quantity=i.quantity or first_number)
+            for i in items
+        ],
         amount=amount,
         category=None,
         allInventory=all_inventory,

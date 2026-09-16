@@ -334,6 +334,59 @@ def test_accepting_records_a_real_sale(client, workspace, inbox_token):
     assert listed["rows"][0]["handledAt"] is not None
 
 
+def test_pending_count_is_what_the_badge_polls(client, employee_client, workspace, inbox_token):
+    """The sidebar badge's one query: cheap, and visible to everyone signed in.
+
+    Both the owner and the employee need it — an order belongs to the shop, not
+    to whoever happened to be looking at the Inbox when it arrived.
+    """
+    assert client.get("/api/inbox/pending-count").json() == {"pending": 0}
+
+    with SessionLocal() as db:
+        _deliver(db, _raw_email(f"orders+{inbox_token}@smartsme.local", "Order", "1 Cooking Oil"))
+
+    assert client.get("/api/inbox/pending-count").json() == {"pending": 1}
+    assert employee_client.get("/api/inbox/pending-count").json() == {"pending": 1}
+
+    # Dealing with it clears the badge rather than leaving a number nobody can
+    # get rid of.
+    row = client.get("/api/inbox").json()["rows"][0]
+    assert client.post(f"/api/inbox/{row['id']}/reject").status_code == 200
+    assert client.get("/api/inbox/pending-count").json() == {"pending": 0}
+
+
+def test_the_recorded_source_names_the_channel(client, workspace, inbox_token):
+    """An emailed order says "email", a Telegram order says "telegram".
+
+    Everything inbound used to land as "nlp" — the same badge a typed note
+    gets — so the ledger could not answer "where did this order come from?",
+    which is the first thing anyone asks when a figure looks wrong.
+    """
+    with SessionLocal() as db:
+        _deliver(db, _raw_email(f"orders+{inbox_token}@smartsme.local", "Order", "1 Cooking Oil"))
+        _link_chat(db, "4242", inbox_token, "Anita")
+        parsed = telegram_channel.to_incoming(_update("2 Cooking Oil"))
+        parsed.route_key = parsed.external_id
+        parsed.external_id = "4242:1"
+        ingest(db, parsed)
+
+    item = {
+        "productId": workspace["productId"],
+        "description": "Cooking Oil",
+        "quantity": 1,
+        "unitPrice": 140,
+    }
+    for row in client.get("/api/inbox").json()["rows"]:
+        draft = dict(row["draft"])
+        draft["items"] = [item]
+        # A review screen that insisted on another source must not be believed.
+        draft["source"] = "form"
+        assert client.post(f"/api/inbox/{row['id']}/accept", json=draft).status_code == 200
+
+    sources = {s["source"] for s in client.get("/api/sales").json()["rows"]}
+    assert {"email", "telegram"} <= sources
+
+
 def test_a_message_cannot_be_accepted_twice(client, workspace, inbox_token):
     with SessionLocal() as db:
         _deliver(db, _raw_email(f"orders+{inbox_token}@smartsme.local", "Order", "1 Cooking Oil"))
@@ -436,3 +489,129 @@ def test_the_cli_prints_where_orders_arrive(capsys):
     assert main(["inbox-token"]) == 0
     printed = capsys.readouterr().out
     assert "token" in printed and "orders+" in printed and "/link " in printed
+
+
+# ---------------------------------------------------------------------------
+# A photographed order sent to the bot
+# ---------------------------------------------------------------------------
+def _photo_update(file_id="AgACfile", with_caption=False, as_document=False):
+    message = {"chat": {"id": "77"}, "from": {"username": "shopkeeper"}, "message_id": 9}
+    if as_document:
+        message["document"] = {"file_id": file_id, "mime_type": "image/png", "file_size": 2048}
+    else:
+        message["photo"] = [
+            {"file_id": "small", "file_size": 800},
+            {"file_id": file_id, "file_size": 2048},
+        ]
+    if with_caption:
+        message["caption"] = "order from anita"
+    return {"update_id": 500, "message": message}
+
+
+def test_the_largest_photo_size_is_the_one_read(monkeypatch):
+    """Telegram sends several recompressed sizes; a smaller one loses exactly
+    the handwriting we are trying to read."""
+    from app.inbound import telegram as tg
+
+    chosen = tg.photo_in(_photo_update()["message"])
+    assert chosen == ("AgACfile", "image/jpeg")
+
+
+def test_a_file_send_is_preferred_over_a_recompressed_photo(monkeypatch):
+    from app.inbound import telegram as tg
+
+    message = _photo_update(as_document=True)["message"]
+    message["photo"] = [{"file_id": "compressed", "file_size": 900}]
+    assert tg.photo_in(message) == ("AgACfile", "image/png")
+
+
+def test_an_oversized_photo_is_refused_rather_than_downloaded():
+    from app.inbound import telegram as tg
+
+    message = {"photo": [{"file_id": "huge", "file_size": tg.MAX_PHOTO_BYTES + 1}]}
+    assert tg.photo_in(message) is None
+
+
+def test_a_photo_becomes_an_incoming_message_carrying_the_image(monkeypatch):
+    from app.inbound import telegram as tg
+
+    monkeypatch.setattr(tg, "download", lambda _id: b"\x89PNG-pretend")
+    parsed = tg.to_incoming(_photo_update())
+    assert parsed is not None
+    assert parsed.image == b"\x89PNG-pretend"
+    assert parsed.image_media_type == "image/jpeg"
+
+
+def test_a_photo_telegram_will_not_hand_over_is_dropped(monkeypatch):
+    """Queuing a message whose picture never arrived is worse than not queuing
+    it: the row would sit in the inbox with nothing in it to read."""
+    from app.inbound import telegram as tg
+
+    monkeypatch.setattr(tg, "download", lambda _id: None)
+    assert tg.to_incoming(_photo_update()) is None
+    # Unless there was a caption, which is still an order worth reading.
+    assert tg.to_incoming(_photo_update(with_caption=True)) is not None
+
+
+def test_a_photographed_order_is_read_by_the_image_path(
+    client, workspace, inbox_token, monkeypatch
+):
+    """The picture goes through the same engines as a Smart Input upload."""
+    from app import smart_input
+    from app.ai.ocr import ParsedInvoice, ParsedInvoiceLine
+    from app.inbound.pipeline import IncomingMessage, ingest
+
+    monkeypatch.setattr(
+        smart_input,
+        "read_image",
+        lambda *_a, **_k: (
+            ParsedInvoice(
+                party="Anita Stores",
+                lineItems=[ParsedInvoiceLine(product="Cooking Oil", quantity=7)],
+            ),
+            "vision",
+        ),
+    )
+
+    with SessionLocal() as db:
+        row = ingest(
+            db,
+            IncomingMessage(
+                channel="email",  # routed by token, exactly like a plus-addressed mail
+                external_id=f"<{uuid.uuid4().hex}@photo>",
+                sender="shopkeeper@example.com",
+                body="",
+                token=inbox_token,
+                image=b"pretend-jpeg",
+            ),
+        )
+
+    assert row is not None
+    assert row.status == "pending"
+    assert row.body == "(photographed order)", "a bare photo still needs a label in the list"
+    assert row.draft["partyId"] == workspace["customerId"]
+    assert row.draft["items"][0]["quantity"] == 7
+
+
+def test_the_page_is_told_which_channels_are_actually_on(client, monkeypatch):
+    """A switched-off channel and an empty mailbox look identical from outside.
+
+    Mail sat in Mailpit, addressed correctly, while EMAIL_INGEST_ENABLED was
+    false - so "Check now" answered `queued: 0`, exactly as it would have for a
+    mailbox with nothing in it, and there was no way to tell the difference from
+    the page. The status travels with the response so the page can say so.
+    """
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "email_ingest_enabled", False)
+    monkeypatch.setattr(settings, "telegram_bot_token", "")
+
+    listing = client.get("/api/inbox").json()
+    assert listing["channels"] == {"email": False, "telegram": False}
+
+    swept = client.post("/api/inbox/collect").json()
+    assert swept["channels"] == {"email": False, "telegram": False}
+    assert swept["queued"] == 0
+
+    monkeypatch.setattr(settings, "email_ingest_enabled", True)
+    assert client.get("/api/inbox").json()["channels"]["email"] is True

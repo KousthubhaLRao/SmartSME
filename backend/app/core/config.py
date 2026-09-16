@@ -110,17 +110,10 @@ class Settings(BaseSettings):
     # ---- Demo data ----------------------------------------------------------
     seed_demo_data: bool = True
 
-    # ---- AI provider --------------------------------------------------------
-    # Set one key. When several are set the first below wins, unless ai_provider
-    # forces a choice.
-    ai_provider: str = ""
-
-    anthropic_api_key: str = ""
-    anthropic_model: str = "claude-sonnet-5"
-
-    openai_api_key: str = ""
-    openai_base_url: str = "https://api.openai.com/v1"
-    openai_model: str = "gpt-4o-mini"
+    # ---- Google Gemini (optional; smarter parsing, and reading photos) ----
+    # A free key from https://aistudio.google.com/apikey needs no card, and the
+    # same key covers both. Without it the built-in regex parser handles text
+    # and OCR.space handles photographs.
 
     #: Pinned model names go stale and then fail outright with a 404 - the
     #: previous defaults here both did. Where a provider publishes a moving
