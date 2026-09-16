@@ -29,3 +29,10 @@ Thumbs.db
 # ---- Vercel ----
 .vercel/
 .neon
+
+# ---- Next.js ----
+.next/
+next-env.d.ts
+
+# ---- Postgres local data ----
+.pgdata/
