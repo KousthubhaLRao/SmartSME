@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { api, useMutation } from "@/lib/api";
 import { AuthLayout } from "@/components/AuthLayout";
+import { Icon } from "@/components/Icon";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 
@@ -11,6 +12,7 @@ export function SignIn() {
   const { run, pending, error } = useMutation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   function signIn(credentials: typeof DEMO) {
     return run(
@@ -48,16 +50,37 @@ export function SignIn() {
           />
         </Field>
         <Field label="Password">
-          <Input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            autoComplete="current-password"
-            required
-          />
+          <div className="relative">
+            <Input
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              autoComplete="current-password"
+              className="pr-11"
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((shown) => !shown)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-pressed={showPassword}
+              tabIndex={-1}
+              className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-xl text-muted-foreground transition-colors hover:text-foreground focus-visible:focus-ring"
+            >
+              <Icon name={showPassword ? "eyeOff" : "eye"} size={17} />
+            </button>
+          </div>
         </Field>
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {error && (
+          <p
+            role="alert"
+            className="flex items-start gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
+            <Icon name="alert" size={16} className="mt-0.5 shrink-0" />
+            <span>{error}</span>
+          </p>
+        )}
         <Button type="submit" size="lg" className="mt-2 w-full" disabled={pending}>
           {pending ? "Signing in…" : "Sign in"}
         </Button>

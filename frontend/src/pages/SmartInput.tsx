@@ -16,10 +16,13 @@ const DRAFT_KEY = "smartsme:smart-input:draft";
 
 // English, Hinglish, Hindi and Kannada, so it is obvious at a glance that the
 // box takes all four. Names and products stay in whatever script they are typed.
+// The multi-item ones are here for the same reason: a real order is a list, and
+// nobody discovers that the box takes a list unless it is shown one.
 const EXAMPLES = [
   "Sold 10 rice bags to Kumar Traders",
-  "Kumar Traders ko 10 bori chawal becha",
-  "अनीता को 5 किलो चावल बेचा",
+  "Sold 10 rice bags, 5 sugar packets and 3 tea powder to Kumar Traders",
+  "Kumar Traders ko 10 bori chawal aur 4 packet cheeni becha",
+  "अनीता को 5 किलो चावल और 2 चाय पाउडर बेचा",
   "ಅನಿತಾಗೆ ೪ ಕಿಲೋ ಅಕ್ಕಿ ಮಾರಿದೆ",
   "Paid electricity bill 3200",
 ];

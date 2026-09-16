@@ -121,9 +121,8 @@ parser, and photos need `OCR_SPACE_API_KEY` (free) or a vision key.
 
 **`GOOGLE_API_KEY` is the one to get** — [aistudio.google.com](https://aistudio.google.com/apikey)
 issues it free with no card, and the same key covers smarter text parsing *and*
-reading handwritten slips including their corrections. `ANTHROPIC_API_KEY` and
-`OPENAI_API_KEY` work identically if you have them. The Settings page shows
-which provider is live and whether it can read images.
+reading handwritten slips including their corrections. The Settings page shows
+whether it is live.
 
 ### What the pull does not include
 
@@ -177,17 +176,9 @@ OCR_SPACE_API_KEY=""          # https://ocr.space/ocrapi - free, printed + handw
 OCR_SPACE_ENGINE=2
 
 # ---- AI provider (optional; smarter NLP, and OCR that sees corrections) ----
-# Set ONE key. If several are set the first below wins, unless AI_PROVIDER
-# forces a choice (anthropic | openai | google). An image request picks the
-# first configured provider that can actually see.
-ANTHROPIC_API_KEY=""
-ANTHROPIC_MODEL="claude-sonnet-5"
-
-OPENAI_API_KEY=""
-OPENAI_BASE_URL="https://api.openai.com/v1"   # also OpenRouter, Together, Ollama
-OPENAI_MODEL="gpt-4o-mini"
-
-GOOGLE_API_KEY=""                             # free, no card - the recommended one
+# A free key from https://aistudio.google.com/apikey - no card. The same key
+# covers smarter text parsing and reading photographed orders.
+GOOGLE_API_KEY=""
 GEMINI_MODEL="gemini-3.5-flash-lite"
 ```
 
@@ -201,12 +192,16 @@ page shows which provider is active and whether it can read images.
 
 ---
 
-## Getting an Anthropic API key
+## Getting a Gemini API key
 
-1. **console.anthropic.com** → Settings → **API Keys** → Create Key (shown once).
-2. Add credit under **Plans & Billing** — API usage is prepaid and billed
-   separately from a Claude Pro/Max subscription.
-3. Put `ANTHROPIC_API_KEY` and `ANTHROPIC_MODEL` in `backend/.env`, then restart
-   the API.
+Free, and no card:
 
-One key covers both NLP and OCR, since these models read images.
+1. Open <https://aistudio.google.com/apikey> and sign in with a Google account.
+2. **Create API key**, then copy it.
+3. Put it in `backend/.env` as `GOOGLE_API_KEY`, then restart the API.
+
+The Settings page will show the model as live. The same key covers both text
+notes and photographed order slips.
+
+Without it the app still runs: text falls back to the built-in regex parser, and
+photographs need `OCR_SPACE_API_KEY` (also free) instead.

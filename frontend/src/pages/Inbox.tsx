@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api, useApi, useMutation } from "@/lib/api";
 import { PageHeader, PageState, EmptyState, SectionCard } from "@/components/ui/misc";
 import { Card } from "@/components/ui/card";
@@ -52,6 +52,7 @@ interface InboxData {
   pending: number;
   inboxToken: string;
   inboxAddress: string;
+  channels: { email: boolean; telegram: boolean };
   links: { id: string; channel: string; label: string | null; externalId: string }[];
 }
 
@@ -61,6 +62,10 @@ const STATUS_TONE: Record<string, "info" | "success" | "warning" | "destructive"
   rejected: "default",
   failed: "destructive",
 };
+
+/** The backend collects every 30s; this is how long the open page waits before
+ *  asking what it found. */
+const REFRESH_MS = 15_000;
 
 const FILTERS = [
   { value: "", label: "All" },
@@ -80,8 +85,19 @@ export function Inbox() {
   const query = new URLSearchParams({ page: String(page) });
   if (status) query.set("status", status);
   const { data, loading, error, reload } = useApi<InboxData>(`/inbox?${query}`);
-  const { run, pending } = useMutation();
+  const { run, pending, error: actionError } = useMutation();
   const can = useCan();
+
+  // The page is a queue, so it refreshes itself. "Check now" stays, but only
+  // to force a sweep this second rather than waiting for the next one — it is
+  // not how you find out something arrived. Paused while a message is open or
+  // a decision is in flight, so the list never moves under a click.
+  const busy = open !== null || pending;
+  useEffect(() => {
+    if (busy) return;
+    const id = setInterval(reload, REFRESH_MS);
+    return () => clearInterval(id);
+  }, [busy, reload]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -103,7 +119,41 @@ export function Inbox() {
         </Button>
       </PageHeader>
 
-      <PageState loading={loading} error={error} />
+      {/* Only before the first load. Once the list is on screen a background
+          refresh must not replace it with skeletons every fifteen seconds. */}
+      {(!data || error) && <PageState loading={loading} error={error} />}
+
+      {/* A refused action says so. "Check now" needs `txn:write`, which an
+          admin does not hold, and a button that fails in silence is worse than
+          one that is not there. */}
+      {actionError && (
+        <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {actionError}
+        </p>
+      )}
+
+      {data && !data.channels.email && !data.channels.telegram && (
+        <p className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
+          <Icon name="alert" size={16} className="mt-0.5 shrink-0" />
+          <span>
+            <strong>No channel is switched on</strong>, so nothing is being collected — mail can sit
+            in the mailbox unread and this page will look the same as an empty one. Start with{" "}
+            <code className="font-mono">{".\\run-dev.ps1 -WithEmail"}</code>, or set{" "}
+            <code className="font-mono">EMAIL_INGEST_ENABLED=true</code> and{" "}
+            <code className="font-mono">TELEGRAM_BOT_TOKEN</code> in{" "}
+            <code className="font-mono">backend/.env</code>.
+          </span>
+        </p>
+      )}
+
+      {data && data.channels.email !== data.channels.telegram && (
+        <p className="text-sm text-muted-foreground">
+          Collecting from <strong>{data.channels.email ? "email" : "Telegram"}</strong> only.{" "}
+          {data.channels.email
+            ? "Telegram is off until TELEGRAM_BOT_TOKEN is set."
+            : "Email is off until EMAIL_INGEST_ENABLED is true — start with -WithEmail."}
+        </p>
+      )}
 
       {data && (
         <>
@@ -419,14 +469,19 @@ function SetupModal({
                     {link.label || link.externalId}{" "}
                     <span className="text-muted-foreground">· {link.channel}</span>
                   </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={pending}
-                    onClick={() => run(() => api.del(`/inbox/links/${link.id}`), onDone)}
-                  >
-                    Unlink
-                  </Button>
+                  {/* Unlinking a chat is configuration, so the API asks for
+                      `config:write`. Offering it to an employee only produced a
+                      button that answered 403 into nothing. */}
+                  <Can do={PERMISSIONS.configWrite}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={pending}
+                      onClick={() => run(() => api.del(`/inbox/links/${link.id}`), onDone)}
+                    >
+                      Unlink
+                    </Button>
+                  </Can>
                 </li>
               ))}
             </ul>

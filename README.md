@@ -115,33 +115,71 @@ All four should produce the same draft - customer **Anita Stores**, item
 **Rice Bag 25kg** at its real price - because the catalogue is matched across
 scripts, not just parsed. Nothing is saved until you confirm.
 
-**3. An order by email.** Start with `.\run-dev.ps1 -WithEmail`, then from
+A note can list several things, and so can an email, a Telegram message or a
+photographed slip - every input path shares this parser:
+
+```
+20 tea packets, 40 rice bags and 10 sugar packets from Sunrise Wholesale
+```
+
+That is one purchase with three priced lines. The split is on quantities, not on
+the word "and", so `2 kg salt and pepper` stays a single item.
+
+**3. A photographed order.** `backend/tests/fixtures/` holds 31 photos of real
+handwritten slips. Open **Smart Input -> Image / OCR** and drop one in:
+
+| Try | You should get |
+|---|---|
+| `13.png` | sale to **Anita Stores** - Rice Bag ×10, Tea Powder ×20 |
+| `20.png` | **purchase** from ABC Suppliers - the party is a supplier, so the direction flips and purchase prices are used |
+| `31.png` | purchase, four items |
+| `5.jpg` | Coffee ×1, not ×2 - one line is crossed out on the paper |
+
+Needs `GOOGLE_API_KEY` or `OCR_SPACE_API_KEY` (both free) in `backend/.env`.
+`1.jpg`-`12.jpg` are messier real-world slips; `13.png`-`31.png` match the demo
+catalogue, so every line resolves to a real product and price.
+
+**4. An order by email.** Start with `.\run-dev.ps1 -WithEmail`, then from
 `backend` with the venv active:
 
 ```powershell
 .venv\Scripts\python -m app.cli send-test-order "Please send 12 bags rice to Anita Stores"
 ```
 
-Press **Check now** on the Inbox page. The order appears as a draft with the
-customer and product already matched; accept it and it becomes a real sale.
+Within half a minute a red count appears on **Inbox** in the sidebar and in the
+browser tab title — you do not have to go looking, and **Check now** only skips
+the wait. The order appears as a draft with the customer and product already
+matched; accept it and it becomes a real sale.
+Sales, purchases and expenses all work - the wording decides which, so
+`bought 10 Cooking Oil from ABC Suppliers` becomes a purchase and
+`paid electricity bill 3200` an expense.
 <http://localhost:8025> shows the raw mail. Full walkthrough:
 [Email, step by step](docs/inbound-orders.md#email-step-by-step).
 
-**4. Telegram** (optional). `/newbot` to @BotFather, put the token in
-`backend/.env` as `TELEGRAM_BOT_TOKEN`, restart, then
+**5. Telegram** (optional). **A bot already exists for this project — you do not
+need to make another one.** Ask for the token, put it in `backend/.env` as
+`TELEGRAM_BOT_TOKEN`, restart, and skip to the `check-telegram` line below.
+Only one machine may poll a bot at a time, so whoever is testing should be the
+only one running it; a second poller gets a `409 Conflict` in the log.
+
+To make your own instead: `/newbot` to @BotFather, put that token in
+`backend/.env` as `TELEGRAM_BOT_TOKEN`, restart. Either way,
 `.venv\Scripts\python -m app.cli check-telegram` prints the bot link and the
-exact `/link` line to send it. Full walkthrough:
+exact `/link` line to send it. After linking, send the chat either text or **one
+of those same photos** - attach `13.png` as a *file* rather than a photo, since
+Telegram recompresses photos and that is what blurs handwriting. It lands in the
+Inbox the same way. Full walkthrough:
 [Telegram, step by step](docs/inbound-orders.md#telegram-step-by-step).
 
-**5. Roles.** Team -> Invite someone -> copy the join link, open it in a private
+**6. Roles.** Team -> Invite someone -> copy the join link, open it in a private
 window, and set a password. That employee can record sales but will not see
 Workflow or Team, and cannot delete anything.
 
-**6. The tests.** `cd backend; .venv\Scripts\python -m pytest -q` - 364 of
-them, about ten seconds. Accuracy is measured separately and on purpose:
+**7. The tests.** `cd backend; .venv\Scripts\python -m pytest -q` - 381 of
+them, about fifteen seconds. Accuracy is measured separately and on purpose:
 [backend/eval](backend/eval/README.md).
 
-**7. Under load** (optional). `python -m loadtest.seed` then the Locust command
+**8. Under load** (optional). `python -m loadtest.seed` then the Locust command
 in [Load testing](docs/performance.md#load-testing).
 
 ---
@@ -163,6 +201,7 @@ This page covers getting SmartSME running. Everything else lives in
 | **[Performance and load testing](docs/performance.md)** | Indexes, pagination, pool sizing, and driving the whole app with Locust. |
 | **[The test suite](docs/testing.md)** | What is covered, how to run it, and how to add to it. |
 | **[Accuracy evaluation](docs/evaluation.md)** | Measured precision/recall/F1 per engine, and what the numbers do not prove. |
+| **[Models and AI services](docs/models.md)** | Every model used, what is *not* a model, and what leaves the machine. |
 | **[Deployment](docs/deployment.md)** | Taking it beyond a laptop. |
 | **[HTTP API](docs/api.md)** | Every endpoint, and the conventions they share. |
 | **[Design system](docs/design.md)** | Colour, type, spacing and the component vocabulary. |

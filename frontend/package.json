@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\" index.html vite.config.ts",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" index.html vite.config.ts"
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" index.html vite.config.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "react": "^19.0.0",
@@ -18,13 +20,14 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.13",
-    "@types/react": "^19.0.7",
     "@types/node": "^22.10.5",
+    "@types/react": "^19.0.7",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
     "prettier": "^3.4.2",
     "tailwindcss": "^4.1.13",
     "typescript": "^5.7.3",
-    "vite": "^6.0.7"
+    "vite": "^6.0.7",
+    "vitest": "^5.0.1"
   }
 }

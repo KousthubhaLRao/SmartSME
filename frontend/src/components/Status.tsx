@@ -25,11 +25,16 @@ export function EventStatusBadge({ status }: { status: string }) {
   return <Badge tone={m.tone}>{m.label}</Badge>;
 }
 
+// Where a document came from. The three AI paths are kept apart on purpose:
+// "an order was parsed" is much less useful after the fact than "an order
+// arrived by email", which is what someone asks when a figure looks wrong.
 export function SourceBadge({ source }: { source: string }) {
-  const map: Record<string, { tone: "default" | "primary" | "info"; label: string }> = {
+  const map: Record<string, { tone: "default" | "primary" | "info" | "success"; label: string }> = {
     form: { tone: "default", label: "Form" },
     nlp: { tone: "primary", label: "AI · Text" },
-    ocr: { tone: "info", label: "AI · OCR" },
+    ocr: { tone: "info", label: "AI · Photo" },
+    email: { tone: "success", label: "Email" },
+    telegram: { tone: "success", label: "Telegram" },
   };
   const m = map[source] ?? { tone: "default" as const, label: source };
   return <Badge tone={m.tone}>{m.label}</Badge>;

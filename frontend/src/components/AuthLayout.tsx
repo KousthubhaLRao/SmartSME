@@ -18,19 +18,13 @@ export function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="grid min-h-screen lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
       <aside className="relative isolate overflow-hidden bg-primary px-6 py-10 text-primary-foreground sm:px-10 lg:flex lg:flex-col lg:justify-between lg:px-14 lg:py-14">
-        {/* Depth without imagery: two off-canvas rings and a soft wash, all
-            mixed from the foreground ink so they tint with the brand. */}
+        {/* A soft wash from the top-right corner. The two outlined rings that
+            used to sit over it read as an unexplained diagram rather than as
+            texture, so they are gone; the gradient alone gives the panel depth
+            without putting a shape on screen that means nothing. */}
         <div
           aria-hidden
           className="pointer-events-none absolute -right-32 -top-40 -z-10 h-[34rem] w-[34rem] rounded-full opacity-[0.07] [background:radial-gradient(circle,var(--primary-foreground)_0%,transparent_65%)]"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-20 top-10 -z-10 h-[26rem] w-[26rem] rounded-full border border-current opacity-[0.09]"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-4 top-44 -z-10 h-[18rem] w-[18rem] rounded-full border border-current opacity-[0.07]"
         />
 
         <BrandLockup tone="contrast" />

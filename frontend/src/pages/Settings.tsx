@@ -161,9 +161,9 @@ export function Settings() {
               <Icon name="alert" size={16} className="mt-0.5 shrink-0" />
               <span>
                 No AI provider configured. Text input falls back to the built-in regex parser.
-                Photographed orders need either GOOGLE_API_KEY (free, and the only option that
-                reads a crossed-out line) or OCR_SPACE_API_KEY (free). Set one in the backend
-                environment and restart the API.
+                Photographed orders need either GOOGLE_API_KEY (free, and the only option that reads
+                a crossed-out line) or OCR_SPACE_API_KEY (free). Set one in the backend environment
+                and restart the API.
               </span>
             </div>
           )}

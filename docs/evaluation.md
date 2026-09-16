@@ -87,6 +87,44 @@ paper. It is also the reason the vision path is tried first and the free OCR
 path is labelled by name on the confirm screen — so whoever reviews a draft
 knows a cancelled line could be sitting in it.
 
+## Consistency: does the same note give the same draft?
+
+An LLM is sampled, so identical input can produce different output. That matters
+more here than in a chat: the same order typed twice must not become two
+different sales.
+
+Measured on five notes, three runs each:
+
+| | Same draft every run |
+|---|---|
+| Before, at the model's default temperature | **3 / 5** |
+| After pinning `temperature: 0` | **5 / 5** |
+
+The two that varied failed in ways a shopkeeper would have noticed:
+
+```
+ಅನಿತಾಗೆ ೫ ಕಿಲೋ ಅಕ್ಕಿ ಮಾರಿದೆ    party was sometimes "ಅನಿತಾಗೆ" - the name with its
+                                Kannada case-ending still attached, which then
+                                matched no customer at all
+anita stores 5 rice 2 sugar    items were sometimes [Rice Bag 25kg x5] and
+                                sometimes [Item x1] - the whole order lost
+```
+
+Extraction is not writing: there is no value in sampling. Accuracy was unchanged
+at 97.1% after the switch, so determinism here was free.
+
+## Latency
+
+| Path | Median | Notes |
+|---|---|---|
+| Text note → draft (Gemini) | **2.2 s** | end to end, including the catalogue match |
+| Photograph → draft (Gemini vision) | **1.4 s** | 12 real slips |
+| Photograph → draft (OCR.space) | **1.9 s** | includes re-encoding the image |
+
+The p90 for text notes reads 16.8 s, but that is the *harness* rather than the
+model: it retries with backoff when the free tier refuses, and those waits are
+inside the measurement. A single uncontended call is ~1-2 s.
+
 ## Four bugs the evaluation found that 364 passing tests did not
 
 1. **The expense category vocabulary was not pinned.** The regex path answered
@@ -117,5 +155,7 @@ and a row with that warning is not a measurement.
 - **A second annotator.** Every gold label here was written once, by one person.
   Serious work has two people label independently and reports how often they
   agreed.
-- **Latency.** The harness records per-call times, but paced runs on a
-  rate-limited free tier make them meaningless as a benchmark.
+- **Latency under concurrency.** The figures above are single calls on an idle
+  machine. Nobody has measured what happens when twenty shopkeepers submit a
+  note in the same minute - and the binding constraint there is not this app but
+  the free tier's ~15 requests a minute.

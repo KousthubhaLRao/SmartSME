@@ -250,7 +250,10 @@ export function Parties() {
                         <div className="flex items-center justify-end gap-1">
                           {canSettle && (
                             <ConfirmButton
-                              needs={PERMISSIONS.dataManage}
+                              // Same permission as taking a payment against a
+                              // single invoice: this is that, for one party,
+                              // without the clicking.
+                              needs={PERMISSIONS.txnWrite}
                               action={() => api.post(`/parties/${p.id}/settle`)}
                               title={isCustomer ? "Mark invoices as paid?" : "Pay all bills?"}
                               message={`${p.outstanding.length} outstanding ${isCustomer ? "invoice" : "bill"}${

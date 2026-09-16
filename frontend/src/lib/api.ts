@@ -10,15 +10,33 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export class ApiError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  /** Which request failed. Needed to tell a bad password from a dead session. */
+  path: string;
+  constructor(message: string, status: number, path = "") {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.path = path;
   }
 }
 
 export const isUnauthorized = (e: unknown) => e instanceof ApiError && e.status === 401;
 export const isForbidden = (e: unknown) => e instanceof ApiError && e.status === 403;
+
+/** Endpoints where a 401 is an answer, not an expiry. */
+const AUTH_PATHS = ["/auth/sign-in", "/auth/sign-up", "/auth/accept-invite"];
+
+/**
+ * Is this 401 the session running out, rather than a rejected credential?
+ *
+ * The distinction matters because the two need opposite handling. A session
+ * that expired mid-use should bounce you to the sign-in page. A *wrong
+ * password* is the sign-in page's own answer, and bouncing there reloads it —
+ * which threw away the error message before it could render, so a mistyped
+ * password looked like the page had simply blinked.
+ */
+export const isSessionExpiry = (e: unknown) =>
+  isUnauthorized(e) && !AUTH_PATHS.some((p) => (e as ApiError).path.startsWith(p));
 
 /**
  * The business a superuser or admin is currently looking at.
@@ -59,9 +77,16 @@ function withBusiness(path: string): string {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const url = withBusiness(path);
+  // Only a JSON body gets a JSON content type. A file upload sends FormData,
+  // and the browser has to set `multipart/form-data; boundary=...` itself —
+  // the boundary is generated per request and nothing else can supply it.
+  // Stamping application/json over it meant the server saw JSON containing a
+  // multipart payload, found no `file` field, and answered 422 "Field
+  // required"; image upload never worked from the UI at all.
+  const isJsonBody = typeof init?.body === "string";
   const res = await fetch(url.startsWith("/api") ? url : `/api${url}`, {
     credentials: "include",
-    headers: init?.body ? { "Content-Type": "application/json" } : undefined,
+    headers: isJsonBody ? { "Content-Type": "application/json" } : undefined,
     ...init,
   });
 
@@ -76,7 +101,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       /* keep the generic message */
     }
-    throw new ApiError(detail, res.status);
+    throw new ApiError(detail, res.status, path);
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
@@ -119,7 +144,7 @@ export const api = {
       } catch {
         /* keep the generic message */
       }
-      throw new ApiError(detail, res.status);
+      throw new ApiError(detail, res.status, path);
     }
     const blob = await res.blob();
     const name =
@@ -167,7 +192,7 @@ export function useApi<T>(path: string | null): QueryState<T> {
       })
       .catch((e: unknown) => {
         if (ticket !== latest.current) return;
-        if (isUnauthorized(e)) {
+        if (isSessionExpiry(e)) {
           window.location.assign("/sign-in");
           return;
         }
@@ -195,7 +220,7 @@ export function useMutation() {
       onDone?.(result);
       return true;
     } catch (e) {
-      if (isUnauthorized(e)) {
+      if (isSessionExpiry(e)) {
         window.location.assign("/sign-in");
         return false;
       }

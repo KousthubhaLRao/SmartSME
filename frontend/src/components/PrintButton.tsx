@@ -1,36 +1,24 @@
-import { useEffect, useRef } from "react";
 import { Button } from "./ui/button";
 import { Icon } from "./Icon";
 
 /**
  * Invoices always print on a light background, whatever theme the app is in.
- * Rather than duplicating the whole light palette inside `@media print`, we drop
- * the `.dark` class for the duration of the print and put it straight back, so
- * the printed page is byte-for-byte the light theme. Bound to the browser
- * beforeprint/afterprint events so Ctrl+P behaves the same as the button.
+ *
+ * That is arranged entirely in CSS: the dark palette in `index.css` lives
+ * inside `@media screen`, so the print stylesheet never sees it and the light
+ * values on `:root` are what reaches the printer.
+ *
+ * This component used to strip the `.dark` class off `<html>` on `beforeprint`
+ * and put it back on `afterprint`. It produced the right PDF, but it restyled
+ * the live page twice around every print, so the screen visibly flashed to
+ * light and back. It also had two sharper edges: the app was briefly in the
+ * wrong theme while the print dialog sat open, and if a print was cancelled in
+ * a way that never fired `afterprint`, the app stayed light until reload.
+ *
+ * Doing it in the stylesheet has none of that, and `Ctrl+P` gets the same
+ * result as the button without needing a listener at all.
  */
 export function PrintButton({ label = "Print" }: { label?: string }) {
-  const wasDark = useRef(false);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    const before = () => {
-      wasDark.current = root.classList.contains("dark");
-      if (wasDark.current) root.classList.remove("dark");
-    };
-    const after = () => {
-      if (wasDark.current) root.classList.add("dark");
-      wasDark.current = false;
-    };
-    window.addEventListener("beforeprint", before);
-    window.addEventListener("afterprint", after);
-    return () => {
-      window.removeEventListener("beforeprint", before);
-      window.removeEventListener("afterprint", after);
-      after(); // never leave the app stuck in light mode
-    };
-  }, []);
-
   return (
     <Button variant="outline" size="sm" onClick={() => window.print()}>
       <Icon name="reports" size={16} /> {label}

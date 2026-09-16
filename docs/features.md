@@ -44,6 +44,10 @@ individual unpaid invoices/bills behind its balance, with **"Pay all"** per part
 and **"Mark all as paid"** for all receivables or all payables. Phone numbers use
 a country-code dropdown (202 countries).
 
+"Pay all" for one party needs the same permission as taking a payment against a
+single bill, so an employee can use it; "Mark all as paid" across the business
+is owner-only.
+
 ### Products, Expenses, Notifications
 Inventory with stock, HSN/SKU, low-stock thresholds and a stock-movement history;
 manual stock adjustments that can never drive stock negative; categorised expenses
@@ -57,7 +61,9 @@ one records **which rule fired, on which event, and therefore who caused it**
 between a message and something you can audit.
 
 The list filters by severity and by unread, and an alert can be marked unread
-again, dismissed, or cleared in bulk once dealt with. Both source columns are
+again, dismissed, or cleared in bulk once dealt with. Reading and marking need
+`data:read`; **dismissing and "Clear read" need `data:manage`**, so those two
+buttons are hidden from employees and admins rather than offered and refused. Both source columns are
 nullable and `SET NULL` on delete: an alert outlives the rule that raised it
 rather than vanishing with it, and shows no source instead.
 

@@ -64,52 +64,65 @@
   --radius: 1rem;
 }
 
-.dark {
-  --background: #14181a;
-  --foreground: #e8eae9;
+/* Wrapped in `@media screen` on purpose, and it is the whole print fix.
+   An invoice has to print on white whatever the app is set to. The old way
+   was to strip the `.dark` class off <html> during printing and put it back
+   afterwards - which worked, but the screen visibly flashed to light and
+   back around every print, because the live page was genuinely being
+   restyled twice.
 
-  --card: #1b2023;
-  --card-foreground: #e8eae9;
+   Excluding these overrides from print media gets the same result with no
+   DOM change at all: the print stylesheet simply never sees them, so the
+   light values on :root above are what the printer gets. No duplication of
+   the palette either - the dark block is just scoped to the screen. */
+@media screen {
+  .dark {
+    --background: #14181a;
+    --foreground: #e8eae9;
 
-  --popover: #1f2528;
-  --popover-foreground: #e8eae9;
+    --card: #1b2023;
+    --card-foreground: #e8eae9;
 
-  --muted: #232a2d;
-  --muted-foreground: #9aa3a1;
+    --popover: #1f2528;
+    --popover-foreground: #e8eae9;
 
-  --primary: #6fb3ab;
-  --primary-hover: #82c2ba;
-  --primary-foreground: #0f1416;
+    --muted: #232a2d;
+    --muted-foreground: #9aa3a1;
 
-  --link: #8ecabf;
+    --primary: #6fb3ab;
+    --primary-hover: #82c2ba;
+    --primary-foreground: #0f1416;
 
-  --secondary: #242b2e;
-  --secondary-foreground: #e8eae9;
+    --link: #8ecabf;
 
-  --accent: #22383a;
-  --accent-foreground: #9fd4cb;
+    --secondary: #242b2e;
+    --secondary-foreground: #e8eae9;
 
-  --destructive: #dd8f85;
-  --destructive-hover: #eaa79e;
-  --destructive-foreground: #1a1210;
+    --accent: #22383a;
+    --accent-foreground: #9fd4cb;
 
-  --success: #7fb894;
-  --success-foreground: #0d1712;
-  --warning: #d0a468;
-  --warning-foreground: #1a1408;
-  --info: #8bb2d0;
-  --info-foreground: #0a151d;
+    --destructive: #dd8f85;
+    --destructive-hover: #eaa79e;
+    --destructive-foreground: #1a1210;
 
-  --border: #2b3336;
-  --input: #2b3336;
-  --ring: #6fb3ab;
+    --success: #7fb894;
+    --success-foreground: #0d1712;
+    --warning: #d0a468;
+    --warning-foreground: #1a1408;
+    --info: #8bb2d0;
+    --info-foreground: #0a151d;
 
-  /* Stepped for the dark surface, same five checks. */
-  --chart-1: #2aa396;
-  --chart-2: #c07a34;
-  --chart-3: #7480cc;
-  --chart-4: #7f9440;
-  --chart-5: #c06a90;
+    --border: #2b3336;
+    --input: #2b3336;
+    --ring: #6fb3ab;
+
+    /* Stepped for the dark surface, same five checks. */
+    --chart-1: #2aa396;
+    --chart-2: #c07a34;
+    --chart-3: #7480cc;
+    --chart-4: #7f9440;
+    --chart-5: #c06a90;
+  }
 }
 
 @theme inline {
@@ -224,5 +237,9 @@
     transition: none !important;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+    /* The two `dark:` utilities in the codebase are a focus ring and a card
+       shadow, and both compile to `.dark`-scoped rules that the media query
+       above cannot reach. Neither belongs on paper anyway. */
+    box-shadow: none !important;
   }
 }

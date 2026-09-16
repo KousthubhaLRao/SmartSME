@@ -14,6 +14,11 @@ const MAX_WIDTH = 460;
 const DEFAULT_WIDTH = 256;
 const RAIL_WIDTH = 64;
 
+/** How often the sidebar asks whether an order has arrived. Slower than the
+ *  backend's own 30s collection sweep would be pointless, faster would cost a
+ *  query for nothing; 20s means the badge is never more than one sweep behind. */
+const INBOX_POLL_MS = 20_000;
+
 /** `needs` hides the entry for roles without that permission. The API enforces
  *  the same rule, so this is about not offering a door that will not open. */
 type NavItem = { to: string; label: string; icon: IconName; needs?: Permission };
@@ -76,6 +81,41 @@ export function AppShell({
   );
   const unread = unreadData?.unread ?? 0;
 
+  // Orders that arrived by email or Telegram. The backend already collects
+  // these on its own every 30s; without this nobody learns of one until they
+  // open the Inbox and press Check now, which is not a notification, it is a
+  // reminder to go looking. Polled on a slow clock from every page so the
+  // count finds the person instead.
+  const { data: inboxData, reload: reloadInbox } = useApi<{ pending: number }>(
+    `/inbox/pending-count?at=${encodeURIComponent(location.pathname)}`,
+  );
+  const waiting = inboxData?.pending ?? 0;
+
+  useEffect(() => {
+    const id = setInterval(reloadInbox, INBOX_POLL_MS);
+    // A tab left in the background can be throttled to a minute or more, so
+    // refresh the moment it comes forward rather than trusting the timer.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") reloadInbox();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [reloadInbox]);
+
+  // The tab title too: the app is usually one of several tabs open, and a
+  // count in the title is visible without switching to it.
+  useEffect(() => {
+    document.title = waiting > 0 ? `(${waiting}) SmartSME` : "SmartSME";
+    // Signing out unmounts the shell; the count must not follow you to the
+    // sign-in page, where it would be a number about nothing.
+    return () => {
+      document.title = "SmartSME";
+    };
+  }, [waiting]);
+
   useEffect(() => {
     try {
       if (localStorage.getItem(COLLAPSE_KEY) === "1") setCollapsed(true);
@@ -137,26 +177,37 @@ export function AppShell({
     }
   }
 
-  const navLink = (item: NavItem, mini: boolean) => (
-    <NavLink
-      key={item.to}
-      to={item.to}
-      title={mini ? item.label : undefined}
-      aria-label={mini ? item.label : undefined}
-      className={({ isActive }) =>
-        cn(
-          "flex items-center gap-3 rounded-lg py-2 text-sm font-medium transition-colors",
-          mini ? "justify-center px-0" : "px-3",
-          isActive
-            ? "bg-accent text-accent-foreground"
-            : "text-muted-foreground hover:bg-muted hover:text-foreground",
-        )
-      }
-    >
-      <Icon name={item.icon} size={18} />
-      {!mini && item.label}
-    </NavLink>
-  );
+  const navLink = (item: NavItem, mini: boolean) => {
+    const count = item.to === "/inbox" ? waiting : 0;
+    return (
+      <NavLink
+        key={item.to}
+        to={item.to}
+        title={mini ? item.label : undefined}
+        aria-label={count > 0 ? `${item.label}, ${count} waiting` : mini ? item.label : undefined}
+        className={({ isActive }) =>
+          cn(
+            "relative flex items-center gap-3 rounded-lg py-2 text-sm font-medium transition-colors",
+            mini ? "justify-center px-0" : "px-3",
+            isActive
+              ? "bg-accent text-accent-foreground"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          )
+        }
+      >
+        <Icon name={item.icon} size={18} />
+        {!mini && item.label}
+        {count > 0 &&
+          (mini ? (
+            <span className="absolute right-2 top-1.5 h-2 w-2 rounded-full bg-destructive" />
+          ) : (
+            <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[11px] font-semibold text-destructive-foreground">
+              {count > 9 ? "9+" : count}
+            </span>
+          ))}
+      </NavLink>
+    );
+  };
 
   // `mini` = the icon-only rail. The mobile drawer is always full-width.
   const sidebarInner = (mini: boolean) => (

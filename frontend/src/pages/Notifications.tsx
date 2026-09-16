@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Pagination, type PageInfo } from "@/components/ui/pagination";
 import { Icon } from "@/components/Icon";
+import { Can, PERMISSIONS, useCan } from "@/lib/session";
 import { cn, timeAgo } from "@/lib/utils";
 
 interface Row {
@@ -46,7 +47,12 @@ export function Notifications() {
     unread: number;
     severities: SeverityCount[];
   }>(`/notifications?${query}`);
-  const { run, pending } = useMutation();
+  // `actionError` is shown, not swallowed. Dismissing and clearing need
+  // `data:manage`, which an employee and an admin do not hold, so both used to
+  // answer 403 into a void: the button clicked, the row stayed, and nothing on
+  // the page ever said why.
+  const { run, pending, error: actionError } = useMutation();
+  const can = useCan();
 
   /** Changing a filter must go back to page one, or you land past the end. */
   function filter(next: { severity?: string; unread?: boolean }) {
@@ -72,14 +78,22 @@ export function Notifications() {
             <Icon name="check" size={16} /> Mark all read
           </Button>
         )}
-        <Button
-          variant="outline"
-          disabled={pending}
-          onClick={() => run(() => api.post("/notifications/clear-read"), reload)}
-        >
-          <Icon name="trash" size={16} /> Clear read
-        </Button>
+        <Can do={PERMISSIONS.dataManage}>
+          <Button
+            variant="outline"
+            disabled={pending}
+            onClick={() => run(() => api.post("/notifications/clear-read"), reload)}
+          >
+            <Icon name="trash" size={16} /> Clear read
+          </Button>
+        </Can>
       </PageHeader>
+
+      {actionError && (
+        <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {actionError}
+        </p>
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         <FilterChip
@@ -152,15 +166,17 @@ export function Notifications() {
                   >
                     {n.read ? "Unread" : "Mark read"}
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Dismiss"
-                    disabled={pending}
-                    onClick={() => run(() => api.del(`/notifications/${n.id}`), reload)}
-                  >
-                    <Icon name="x" size={15} />
-                  </Button>
+                  {can(PERMISSIONS.dataManage) && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Dismiss"
+                      disabled={pending}
+                      onClick={() => run(() => api.del(`/notifications/${n.id}`), reload)}
+                    >
+                      <Icon name="x" size={15} />
+                    </Button>
+                  )}
                 </div>
               </li>
             ))}

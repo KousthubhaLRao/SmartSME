@@ -33,8 +33,14 @@ no business; two are tenant-level and belong to exactly one.
 
 The admin/owner line is the important one: **no permission an admin holds can
 create, amend or delete a sale, purchase, expense, product or party.** An
-employee is additive-only — they log what happened, and cannot cancel, delete,
-back-date or settle it afterwards.
+employee is additive-only — they log what happened, and cannot cancel, delete
+or back-date it afterwards.
+
+Settling **one** party is on the additive side of that line: it is the payment
+an employee can already take against each of that party's bills, done in one
+click instead of six, so gating it harder protected nothing. Settling **every**
+receivable or payable at once stays with the owner — that writes off balances
+for parties the person clicking never dealt with.
 
 Permissions are coarse (seven of them) rather than one per endpoint: a finer
 grid is more expressive and much easier to get subtly wrong.

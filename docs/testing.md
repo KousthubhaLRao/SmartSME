@@ -10,28 +10,27 @@ What is covered, how to run it, and how to add to it.
 
 ```bash
 cd backend
-.venv/Scripts/python -m pytest -q              # 364 tests
+.venv/Scripts/python -m pytest -q              # 381 tests
 ```
 
 ```
 ================================ test summary =================================
-  AI (mocked)        26 passed
-  AI (mocked)             26 passed
+  AI (mocked)             24 passed
   Alert log                9 passed
   Dispatch                 8 passed
   Domain units            42 passed
   Endpoint smoke          36 passed
   Event authors            6 passed
-  Inbound orders          31 passed
+  Inbound orders          40 passed
   Languages               46 passed
-  Order slips (OCR)       21 passed
+  Order slips (OCR)       23 passed
   Paging                  25 passed
   Review regressions       8 passed
-  Review regressions II   15 passed
-  Roles & throttle        26 passed
+  Review regressions II   22 passed
+  Roles & throttle        27 passed
   Translation             65 passed
 -------------------------------------------------------------------------------
-  364 passed in 9.70s
+  381 passed in 32.40s
 ```
 
 Hooks in `tests/conftest.py` replace pytest's default report order. Pytest prints
@@ -40,7 +39,7 @@ want has scrolled off; here a per-layer summary comes last, with the failures �
 full traceback and assertion diff — printed underneath it. A skip prints its
 reason, which is almost always "Postgres is unreachable".
 
-Eleven layers, in one run.
+Fourteen layers, in one run.
 
 **`tests/test_domain.py` — 42 unit tests, no database.** The maths and parsing the
 money and Smart Input features depend on: discount-before-tax totals for sales and
@@ -54,7 +53,7 @@ numbers; postpositions are moved; names keep their script; and the awkward cases
 are pinned — ಬಾಡಿಗೆ is not split into "to ಬಾಡಿ", a product is not swallowed by
 the party beside it, and a shop called "ABC Suppliers" is not read as "rs 10".
 
-**`tests/test_ai_mocked.py` — 26 tests over the AI path, model faked.** Provider
+**`tests/test_ai_mocked.py` — 24 tests over the AI path, model faked.** Provider
 selection and precedence, what the prompt asks for, and above all what happens
 when the model answers badly: markdown fences, prose around the JSON, truncated
 objects, wrong field types, a provider that raises. Every one must degrade to
@@ -66,7 +65,7 @@ rule, event and author, that an employee's alert is attributed to the employee,
 the severity and unread filters, mark-unread, dismissal, bulk clear, and that a
 sourceless alert still renders.
 
-**`tests/test_inbound.py` - 28 tests over orders arriving from outside.** A raw
+**`tests/test_inbound.py` - 40 tests over orders arriving from outside.** A raw
 RFC-822 message and a real Telegram `getUpdates` payload go in; a draft, a queue
 entry and eventually a recorded sale with moved stock come out. Covers routing by
 token, HTML-only mail, Kannada surviving the mail encoding, deduplication (the
@@ -91,7 +90,7 @@ returns an envelope, that pages do not overlap, that a page past the end is
 empty rather than an error, and above all that the statistics beside the rows
 still describe the whole set when the page is shrunk to one row.
 
-**`tests/test_rbac.py` — 26 tests over roles, invites and throttling.** Every
+**`tests/test_rbac.py` — 27 tests over roles, invites and throttling.** Every
 role against the endpoints that matter for it, from both sides — what it may do
 *and* what it must be refused, which is the half that actually proves anything.
 Covers the permission table itself, cross-tenant access, the invite round trip
@@ -100,7 +99,7 @@ that an owner locks after five failures, that an employee never does, that a
 successful sign-in clears the streak, and that the lock doubles.
 
 **`tests/test_api_smoke.py` — 36 tests over every endpoint.** One pass across the
-whole HTTP surface: all 54 routes are called the way the SPA calls them and the
+whole HTTP surface: all 73 routes are called the way the SPA calls them and the
 response is checked for the shape the client relies on — routing, auth,
 serialization, the domain call behind each route, and the event effects that
 follow a write (a sale moves stock before the request returns; cancelling it puts
@@ -148,6 +147,29 @@ the prompts stay verbatim.
 
 ---
 
+
+## Frontend tests
+
+```powershell
+cd frontend
+npm test            # vitest, once
+npm run test:watch
+```
+
+Small on purpose, and pointed at one thing: `src/lib/api.ts`, where the
+frontend and the API agree on the shape of a request.
+
+That file is covered because a bug lived in it undetected. `request()` set
+`Content-Type: application/json` whenever a body was present - including when
+the body was a `FormData` - so the browser never set its own
+`multipart/form-data; boundary=...`. FastAPI found no `file` field and answered
+**422 "Field required"**. Image upload never worked from the UI at all.
+
+The backend suite could not have caught it. Every test there posts multipart
+straight at the endpoint with `TestClient`, which skips the frontend's
+request-building entirely. **A contract only one side is tested against is not
+a tested contract** - and that is the argument for these tests existing at all,
+rather than any coverage number.
 
 ## What the test suite does not measure
 

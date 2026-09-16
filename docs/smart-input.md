@@ -8,13 +8,17 @@ The NLP engine, three scripts, catalogue matching, and the two OCR engines.
 
 ## Smart Input Engine (NLP + OCR)
 
-`app/ai/client.py` is a **provider-agnostic** layer over httpx: Anthropic, OpenAI
-(or any OpenAI-compatible endpoint) and Google Gemini all implement one
-`complete(prompt, system, image)` call. `get_provider()` picks the first
-configured key in the order anthropic → openai → google, unless
-`AI_PROVIDER` forces one. Vision support is reported per model, and an image
-request asks for a provider that can see — so a text-only key never shadows a
-vision-capable one sitting in the same `.env`.
+`app/ai/client.py` is one provider behind one `complete(prompt, system, image)`
+call: **Google Gemini**, chosen because its free tier needs no card and the same
+key reads a typed note and a photographed slip. `get_provider()` returns it when
+`GOOGLE_API_KEY` is set and `None` otherwise, which is what makes every caller
+degrade cleanly instead of failing.
+
+It used to accept Anthropic, any OpenAI-compatible endpoint, and Groq as well.
+None was ever configured, and carrying them cost four sets of settings, four
+code paths and four pinned model names to go stale — two of which were silently
+returning 404 before anyone checked. Swapping providers later is a contained
+change: one `complete()` implementation and the settings behind it.
 
 A provider that is failing is dropped rather than retried: after three
 consecutive failures it is skipped outright for two minutes and callers fall
@@ -127,8 +131,8 @@ which is the step that actually does the work. The dictionary is offline,
 instant, auditable, and correct on the vocabulary a shop uses every day.
 
 ### Text (`app/ai/nlp.py`)
-1. One prompt asks the model for strict JSON: `eventType`, `party`, `product`,
-   `quantity`, `amount`, `category`, `allInventory`, `discountType`,
+1. One prompt asks the model for strict JSON: `eventType`, `party`,
+   `lineItems[]`, `amount`, `category`, `allInventory`, `discountType`,
    `discountValue`, `date`.
 2. `extract_json()` pulls the first `{…}` out of the reply and `_normalize()`
    validates every field.
@@ -144,6 +148,24 @@ Understood today, among others:
 | `Paid electricity bill 3200` | expense, category Utilities |
 | `Sell everything to Anita Stores at a discount of 10%` | one line per in-stock product, 10% discount |
 | `Sold 4 litres cooking oil to Shree on 20th August 2026` | date `2026-08-20` |
+| `20 tea packets, 40 rice bags and 10 sugar packets from Sunrise Wholesale` | **three** priced lines, purchase |
+
+### More than one item in a note
+
+`lineItems` is a list because notes are lists. It used to be a single `product`,
+so a note naming three things silently became one - the model and the regex
+parser both, since the shape gave neither anywhere to put the rest.
+
+The regex parser splits on **quantities, not on the word "and"**, and that is
+what makes it safe:
+
+```
+2 kg salt and pepper     one quantity  -> one item, "Salt and Pepper"
+5 rice 2 sugar           two          -> two items
+```
+
+Splitting on conjunctions would get both of those backwards. Line breaks and
+commas work too, so a slip typed as a list reads as one.
 
 Dates accept `20th August 2026`, `20 aug`, `3 sept`, `August 20 2026`,
 `20/08/2026`, `2026-08-20`, `today`, `yesterday`, `day before yesterday`. With no
